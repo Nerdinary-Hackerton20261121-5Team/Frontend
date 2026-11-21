@@ -1,4 +1,4 @@
-import { Button } from './Button'
+import { Button } from '@/shared/Button'
 
 interface ErrorViewProps {
   message: string
@@ -16,7 +16,7 @@ export const ErrorView = ({ message, onRetry }: ErrorViewProps) => {
       <p className="text-sm text-text-secondary">{message}</p>
       {onRetry && (
         <div className="mt-4 w-full">
-          <Button variant="ghost" onClick={onRetry}>
+          <Button variant="secondary" onClick={onRetry}>
             다시 시도
           </Button>
         </div>
