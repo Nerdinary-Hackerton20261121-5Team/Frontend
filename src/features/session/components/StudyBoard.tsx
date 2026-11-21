@@ -21,6 +21,8 @@ interface StudyBoardProps {
 
 // 칸 안쪽으로 고리와 이름표를 띄우는 거리
 const INSET = 10;
+// 내 조각 테두리 두께(px). 사진 위에서도 잘 보이게 굵게 둔다
+const BORDER = 3;
 
 /** 06 공부 화면의 사진 판. 내 조각만 선명하게, 다른 사람 조각은 흐리게 보이고 칸마다 채운 정도를 고리로 보여 준다 */
 export const StudyBoard = ({
@@ -84,8 +86,8 @@ export const StudyBoard = ({
             ...cornerRadius(cell.index),
           }}
           className={cn(
-            'absolute overflow-hidden border-2',
-            away ? 'border-status-away' : 'border-brand-subtle',
+            'absolute overflow-hidden border-[3px]',
+            away ? 'border-status-away' : 'border-brand-primary',
           )}
         >
           {photoUrl && (
@@ -96,8 +98,8 @@ export const StudyBoard = ({
               style={{
                 width,
                 height,
-                left: -cell.x - 2,
-                top: -cell.y - 2,
+                left: -cell.x - BORDER,
+                top: -cell.y - BORDER,
                 filter: myBlur > 0 ? `blur(${myBlur}px)` : undefined,
               }}
               className='absolute max-w-none object-cover'
