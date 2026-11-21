@@ -38,7 +38,12 @@ export const NewGoalPage = () => {
   const next = () => {
     if (reusable) return navigate(`/s/${session.code}/invite`);
     create.mutate(
-      { goalSeconds: draft.goalMinutes * 60, maxParticipants: draft.memberCount },
+      {
+        goalSeconds: draft.goalMinutes * 60,
+        maxParticipants: draft.memberCount,
+        // 이전 버전에서 만든 값이 남아 있으면 요청 ID 가 없을 수 있다
+        clientRequestId: draft.requestId ?? crypto.randomUUID(),
+      },
       {
         onSuccess: (entry) => navigate(`/s/${openAsHost(entry)}/invite`),
         onError: (error) => {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { LoadingView } from '@/components/LoadingView';
 import { Button } from '@/shared/Button';
 import { Input } from '@/shared/Input';
-import { shouldUseMock, useJoinSession } from '../api';
+import { leaveSession, shouldUseMock, useJoinSession } from '../api';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { JigsawBoard } from '../components/JigsawBoard';
@@ -23,9 +24,11 @@ export const JoinPage = () => {
   const { code, session } = useCurrentSession();
   const openAsGuest = useSessionStore((state) => state.openAsGuest);
   const rename = useSessionStore((state) => state.rename);
-  const join = useJoinSession(code, session === null);
+  const reset = useSessionStore((state) => state.reset);
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
-  useSessionSync();
+  const join = useJoinSession(code, session === null);
+  const { gone } = useSessionSync();
 
   // 링크에 실려 온 값은 누구나 바꿀 수 있으므로 확인한 것만 쓴다
   const { photoUrl, pieceCount } = readInvite(params);
@@ -37,6 +40,43 @@ export const JoinPage = () => {
     // TODO(mock): 세션 API 가 없는 서버에서는 흉내 낸 세션으로 들어간다
     else if (join.error && shouldUseMock(join.error)) openAsGuest(code, null, invite);
   }, [session, join.data, join.error, code, photoUrl, pieceCount, openAsGuest]);
+
+  // 잡아 둔 자리가 서버에서 없어졌으면(나갔다가 돌아온 경우 등) 비우고 다시 입장한다
+  useEffect(() => {
+    if (!gone) return;
+    queryClient.removeQueries({ queryKey: ['session-join', code] });
+    reset();
+  }, [gone, code, queryClient, reset]);
+
+  // 링크를 열 때 자리를 먼저 잡아 두므로, 이름을 정하지 않고 떠나면 그 자리를 돌려준다.
+  useEffect(() => {
+    // 자리를 잡아 두기만 한 상태면 서버에 나간다고 알리고 true 를 돌려준다
+    const leave = (keepalive: boolean) => {
+      const current = useSessionStore.getState().session;
+      const me = current?.members.find((member) => member.isMe);
+      const holding =
+        current?.code === code && current.phase === 'lobby' && me !== undefined && me.name === '';
+      if (!holding || !current.remote || current.remote.isCreator) return false;
+      // 실패해도 화면은 떠나야 하므로 결과를 기다리지 않는다
+      void leaveSession(current.remote, keepalive).catch(() => undefined);
+      return true;
+    };
+    // 탭을 닫거나 새로고침할 때. 화면이 아직 살아 있으므로 세션을 비우면 곧바로 다시 입장해 버린다.
+    // 그래서 저장해 둔 것만 지워, 다시 열었을 때 새로 입장하게 한다
+    const onPageHide = () => {
+      if (leave(true)) sessionStorage.removeItem('session');
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      // 뒤로 가기처럼 주소가 이 세션 밖으로 바뀌어 화면이 사라질 때.
+      // 주소가 그대로면 화면을 다시 그리는 것뿐이라 나가지 않는다
+      if (!window.location.hash.startsWith(`#/s/${code}`) && leave(false)) {
+        queryClient.removeQueries({ queryKey: ['session-join', code] });
+        reset();
+      }
+    };
+  }, [code, queryClient, reset]);
 
   // 없는 코드, 이미 시작한 방, 정원이 찬 방은 들어갈 수 없다
   if (!session && join.error && !shouldUseMock(join.error)) {

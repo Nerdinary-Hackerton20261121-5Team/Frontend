@@ -35,21 +35,30 @@ const TIMEOUT_MS = 10_000
 const FALLBACK_MESSAGE = '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
 
 type Body = Record<string, unknown> | FormData
-/** 요청에 덧붙일 헤더. 참가자 토큰처럼 요청마다 다른 값을 넣을 때 쓴다 */
-type Headers = Record<string, string>
+/** 요청마다 달라지는 값 */
+type Options = {
+  /** 덧붙일 헤더. 참가자 토큰처럼 요청마다 다른 값을 넣을 때 쓴다 */
+  headers?: Record<string, string>
+  /** 화면을 떠나는 중에도 요청을 끝까지 보낸다. 나가기처럼 페이지가 닫힐 때 부르는 요청에 쓴다 */
+  keepalive?: boolean
+}
 
 async function request<T>(
   method: string,
   path: string,
   body?: Body,
-  headers?: Headers,
+  options: Options = {},
 ): Promise<T> {
   const isForm = body instanceof FormData
   let response: Response
   try {
     response = await fetch(BASE_URL + path, {
       method,
-      headers: { ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      headers: {
+        ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
+        ...options.headers,
+      },
+      keepalive: options.keepalive,
       body: isForm ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -76,12 +85,12 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(path: string, headers?: Headers) => request<T>('GET', path, undefined, headers),
-  post: <T>(path: string, body?: Body, headers?: Headers) =>
-    request<T>('POST', path, body, headers),
-  put: <T>(path: string, body?: Body, headers?: Headers) => request<T>('PUT', path, body, headers),
-  patch: <T>(path: string, body?: Body, headers?: Headers) =>
-    request<T>('PATCH', path, body, headers),
-  delete: <T = void>(path: string, headers?: Headers) =>
-    request<T>('DELETE', path, undefined, headers),
+  get: <T>(path: string, options?: Options) => request<T>('GET', path, undefined, options),
+  post: <T>(path: string, body?: Body, options?: Options) =>
+    request<T>('POST', path, body, options),
+  put: <T>(path: string, body?: Body, options?: Options) => request<T>('PUT', path, body, options),
+  patch: <T>(path: string, body?: Body, options?: Options) =>
+    request<T>('PATCH', path, body, options),
+  delete: <T = void>(path: string, options?: Options) =>
+    request<T>('DELETE', path, undefined, options),
 }

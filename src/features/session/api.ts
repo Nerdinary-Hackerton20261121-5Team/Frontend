@@ -59,7 +59,7 @@ export type BoardPiece = {
 
 export type Board = { status: SessionStatus; pieces: BoardPiece[] };
 
-const withToken = (remote: Remote) => ({ 'X-Participant-Token': remote.token });
+const withToken = (remote: Remote) => ({ headers: { 'X-Participant-Token': remote.token } });
 
 /**
  * TODO(mock): 세션 API 가 아직 배포되지 않은 서버이거나 서버에 닿지 못한 경우다.
@@ -82,12 +82,13 @@ export const useUploadPhoto = () => {
 /** 방을 만든다. 만든 사람도 참가자로 등록된다 */
 export const useCreateSession = () => {
   return useMutation({
-    mutationFn: (input: { goalSeconds: number; maxParticipants: number }) =>
-      api.post<SessionEntry>('/api/sessions', {
-        ...input,
-        // 같은 값으로 다시 보내면 방을 새로 만들지 않는다
-        clientRequestId: crypto.randomUUID(),
-      }),
+    // clientRequestId 가 같으면 서버는 방을 새로 만들지 않고 먼저 만든 방을 돌려준다.
+    // 응답을 못 받고 다시 누르거나 새로고침해도 방이 두 개가 되지 않는다
+    mutationFn: (input: {
+      goalSeconds: number;
+      maxParticipants: number;
+      clientRequestId: string;
+    }) => api.post<SessionEntry>('/api/sessions', input),
   });
 };
 
@@ -183,3 +184,13 @@ export const useEndSession = () => {
       ),
   });
 };
+
+/**
+ * 시작 전에 방에서 나가 자리를 돌려준다. 만든 사람은 나갈 수 없고 방 종료를 써야 한다.
+ * 화면이 닫히는 순간에도 불러야 해서 훅이 아니라 함수로 둔다.
+ */
+export const leaveSession = (remote: Remote, keepalive: boolean) =>
+  api.delete<{ sessionId: number; participantId: number; left: boolean }>(
+    `/api/sessions/${remote.sessionId}/participants/me`,
+    { ...withToken(remote), keepalive },
+  );
