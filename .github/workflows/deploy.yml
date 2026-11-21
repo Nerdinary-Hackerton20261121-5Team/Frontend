@@ -61,14 +61,80 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # cluster-config 가 비공개가 되어 공개 레포에서는 그쪽의 재사용 워크플로(deploy-image.yml)를 부를 수 없다.
+  # 같은 단계를 여기에 그대로 둔다. cluster-config 에는 배포 키(CLUSTER_CONFIG_DEPLOY_KEY)로 push 한다.
   deploy:
+    name: deploy ${{ github.ref == 'refs/heads/dev' && 'fe-dev' || 'fe' }}
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
-    uses: Nerdinary-Hackerton20261121-5Team/cluster-config/.github/workflows/deploy-image.yml@main
-    with:
+    env:
       # main → fe (운영), dev → fe-dev (dev 서버)
-      app: ${{ github.ref == 'refs/heads/dev' && 'fe-dev' || 'fe' }}
-      image: ${{ needs.build.outputs.image }}
-    secrets: inherit
+      APP: ${{ github.ref == 'refs/heads/dev' && 'fe-dev' || 'fe' }}
+      IMAGE: ${{ needs.build.outputs.image }}
+      CALLER: ${{ github.repository }}@${{ github.sha }}
+      KUSTOMIZE_VERSION: v5.6.0
+    steps:
+      - name: Checkout cluster-config (deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: Nerdinary-Hackerton20261121-5Team/cluster-config
+          ref: main
+          ssh-key: ${{ secrets.CLUSTER_CONFIG_DEPLOY_KEY }}
+          fetch-depth: 0
+
+      - name: Install kustomize
+        run: |
+          if command -v kustomize >/dev/null; then kustomize version; exit 0; fi
+          url="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL "$url" | tar -xz -C /usr/local/bin kustomize
+          kustomize version
+
+      - name: Set image, commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "apps/$APP/kustomization.yaml" || { echo "::error::apps/$APP/kustomization.yaml 이 없다"; exit 1; }
+          git config user.name "cluster-config-deploy[bot]"
+          git config user.email "cluster-config-deploy@users.noreply.github.com"
+
+          CHANGED=false
+          bump() {
+            CHANGED=false
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+            (
+              cd "apps/$APP"
+              kustomize edit set image "$APP=$IMAGE"
+              kustomize build . >/dev/null
+            )
+            git add "apps/$APP"
+            local rc=0
+            git diff --cached --quiet || rc=$?
+            case "$rc" in
+              0) return 0 ;;
+              1) ;;
+              *) echo "::error::git diff 실패($rc)"; exit "$rc" ;;
+            esac
+            git commit --quiet -m "deploy($APP): $IMAGE" -m "source: $CALLER"
+            CHANGED=true
+          }
+
+          # 다른 배포와 겹쳐 push 가 밀리면 최신 main 을 다시 받아 한 번 더 적용한다
+          for attempt in 1 2 3; do
+            bump
+            if [ "$CHANGED" = false ]; then
+              echo "::notice::변경 없음: apps/$APP 는 이미 $IMAGE"
+              exit 0
+            fi
+            if git push origin HEAD:main; then
+              echo "### deploy($APP): $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::warning::push 실패($attempt/3), 최신 main 을 다시 받아 재적용"
+            sleep $((attempt * 3))
+          done
+          echo "::error::push 3회 실패"; exit 1
