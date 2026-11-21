@@ -4,23 +4,23 @@ import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
 import { Button } from '@/shared/Button';
-import { useBoard, useEndFocus, useHeartbeat, usePieceImages } from '../api';
+import { useBoard, useEndFocus, useHeartbeat } from '../api';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
 import { SheetActions } from '../components/SheetActions';
 import { StudyBoard } from '../components/StudyBoard';
 import { StudyHud } from '../components/StudyHud';
 import { pieceOwners } from '../goalPreview';
+import { MY_BLUR_RATIO } from '../limits';
 import { gridFor, ownersFromServer, pieceTotal } from '../puzzle';
 import { useSessionStore } from '../store';
 import { studyGrid } from '../studyLayout';
 import { SPEED } from '../time';
+import type { TickMode } from '../types';
 import { useCurrentSession } from '../useCurrentSession';
 import { useElementSize } from '../useElementSize';
 import { useWakeLock } from '../useWakeLock';
 
-/** 내 조각이 가장 흐릴 때의 흐림 정도(px). 시간을 채울수록 0 에 가까워진다 */
-const MAX_BLUR = 8;
 /** 사진 카드의 모서리 둥글기(px) */
 const BOARD_RADIUS = 16;
 
@@ -39,6 +39,7 @@ export const StudyPage = () => {
   const finishStudy = useSessionStore((state) => state.finishStudy);
   const syncBoard = useSessionStore((state) => state.syncBoard);
   const syncMembers = useSessionStore((state) => state.syncMembers);
+  const syncFocused = useSessionStore((state) => state.syncFocused);
   const endFocus = useEndFocus();
   const stream = useCameraStore((state) => state.stream);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -70,29 +71,32 @@ export const StudyPage = () => {
     syncBoard(board.data.pieces);
     syncMembers(board.data.members);
   }, [board.data, syncBoard, syncMembers]);
-  // 서버가 오려 준 조각 그림. 공부 중에는 정답 칸이 드러나지 않게 서버가 섞어 준 칸에 놓는다
-  const images = usePieceImages(
-    session?.remote ?? null,
-    board.data?.hasImage ? board.data.pieces.map((piece) => piece.position) : [],
-    studying ? 'study' : null,
-  );
-  const pieceImages =
-    board.data && images.data
-      ? Object.fromEntries(
-          board.data.pieces.map((piece) => [
-            piece.displaySlot - 1,
-            images.data.urls[piece.position],
-          ]),
-        )
-      : undefined;
+  // 공부 중에는 정답 칸이 드러나지 않게 서버가 섞어 준 칸에 조각을 놓는다.
+  // 칸마다 사진의 어느 부분을 보여 줄지 정해 둔다. 조각 그림은 받지 않고 방의 사진을 잘라 쓴다(서버가 조각을 오리는 데 오래 걸린다)
+  const sources = board.data
+    ? board.data.pieces.reduce<number[]>((list, piece) => {
+        list[piece.displaySlot - 1] = piece.position - 1;
+        return list;
+      }, [])
+    : undefined;
 
+  // 서버가 센 내 공부 시간을 따른다. 이 기기의 시계가 밀려도 서버 값으로 돌아온다
+  const serverFocused = heartbeat.data?.focusedSeconds;
+  useEffect(() => {
+    if (serverFocused !== undefined) syncFocused(serverFocused);
+  }, [serverFocused, syncFocused]);
+
+  // 1초마다 시간을 흘려보낸다. 얼굴 판정이 자주 바뀌어도 시계가 다시 시작되지 않게 지금 상태는 ref 로 읽는다
+  const mode: TickMode = paused ? 'paused' : hidden ? 'hidden' : away ? 'away' : 'focused';
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
   useEffect(() => {
     if (!studying) return;
-    const timer = window.setInterval(() => {
-      tick(SPEED, paused ? 'paused' : document.hidden ? 'hidden' : away ? 'away' : 'focused');
-    }, 1000);
+    const timer = window.setInterval(() => tick(SPEED, modeRef.current), 1000);
     return () => window.clearInterval(timer);
-  }, [studying, paused, away, tick]);
+  }, [studying, tick]);
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
@@ -104,9 +108,9 @@ export const StudyPage = () => {
   const perPerson = gridFor(session.pieceCount, session.members.length).cols;
   const grid = studyGrid(pieceTotal(gridFor(session.pieceCount, session.members.length)));
   const myIndex = session.members.findIndex((member) => member.isMe);
-  // 서버 세션이면 서버가 정한 내 칸을 쓴다. 조각 그림이 있으면 섞어 둔 칸을 따른다
-  const mySlots = pieceImages
-    ? (board.data?.pieces ?? []).filter((piece) => piece.isMine).map((piece) => piece.displaySlot)
+  // 서버 세션이면 서버가 섞어 준 칸 가운데 내 칸을 쓴다
+  const mySlots = board.data
+    ? board.data.pieces.filter((piece) => piece.isMine).map((piece) => piece.displaySlot)
     : session.myPositions;
   const owners = mySlots
     ? ownersFromServer(pieceTotal(grid), mySlots, myIndex, session.members.length, perPerson)
@@ -119,9 +123,8 @@ export const StudyPage = () => {
     if (!session.remote?.isCreator) return finishStudy();
     endFocus.mutate(session.remote, { onSettled: finishStudy });
   };
-  // 서버 조각 그림을 받기 전에 그리면 정답 칸이 잠깐 드러난다. 다 받은 뒤에 그린다
-  const loadingPieces =
-    session.remote !== null && (board.isPending || (board.data?.hasImage && images.isPending));
+  // 서버가 섞어 준 칸을 알기 전에 그리면 정답 칸이 잠깐 드러난다. 진행판을 받은 뒤에 그린다
+  const loadingBoard = session.remote !== null && board.isPending;
   const showAway = away && !paused;
 
   return (
@@ -131,7 +134,7 @@ export const StudyPage = () => {
         className='relative mx-4 mt-[calc(14px+env(safe-area-inset-top))] min-h-0 flex-1 overflow-hidden bg-bg-inverse'
         style={{ borderRadius: BOARD_RADIUS }}
       >
-        {!loadingPieces && (
+        {!loadingBoard && (
           <StudyBoard
             width={size.width}
             height={size.height}
@@ -139,9 +142,8 @@ export const StudyPage = () => {
             owners={owners}
             members={session.members}
             photoUrl={session.photoUrl}
-            pieceImages={pieceImages}
-            padRatio={board.data?.padRatio}
-            myBlur={(1 - (me?.progress ?? 0)) * MAX_BLUR}
+            sources={sources}
+            myBlur={(1 - (me?.progress ?? 0)) * (size.width / grid.cols) * MY_BLUR_RATIO}
             away={showAway}
             radius={BOARD_RADIUS}
           />

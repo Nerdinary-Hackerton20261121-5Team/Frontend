@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import type { Remote } from './types';
 
@@ -46,6 +52,8 @@ export type Presence = 'FOCUSING' | 'PAUSED' | 'AWAY';
 
 export type Heartbeat = {
   status: SessionStatus;
+  /** 서버가 센 내 공부 시간(초). 얼굴이 보인 시간만 쌓인다 */
+  focusedSeconds: number;
   disconnected: boolean;
   myRestoration: number;
   remainingSeconds: number;
@@ -374,41 +382,60 @@ const aspectOf = (url: string) =>
     image.src = url;
   });
 
-export type PieceImages = {
-  /** 정답 칸 번호별 그림 주소 */
-  urls: Record<number, string>;
-  /** 칸 하나의 가로세로 비율. 서버는 사진을 자르지 않고 원래 비율대로 나눈다 */
-  cellAspect: number;
+type PieceImage = { url: string; aspect: number };
+
+const loadPieceImage = async (remote: Remote, position: number): Promise<PieceImage> => {
+  const blob = await api.getBlob(
+    `/api/sessions/${remote.sessionId}/pieces/${position}/image`,
+    withToken(remote),
+  );
+  const url = await toDataUrl(blob);
+  return { url, aspect: await aspectOf(url) };
 };
 
 /**
- * 서버가 직소 모양으로 오려 준 조각 그림을 받는다.
+ * 조립 단계에서 서버가 직소 모양으로 오려 준 조각 그림을 받는다.
  * 내 조각은 선명하고, 남의 조각은 그 사람이 채운 만큼만 선명하다.
+ * 서버는 요청마다 조각을 새로 오려서 여러 사람이 한꺼번에 받으면 오래 걸린다.
+ * 그래서 끌어다 놓을 내 조각부터 받고, 남의 조각은 그 뒤에 받아 오는 대로 보여 준다.
  * 토큰이 필요해 img 주소로 바로 쓸 수 없어서, 받아서 data 주소로 바꿔 돌려준다.
  */
 export const usePieceImages = (
   remote: Remote | null,
-  positions: number[],
-  /** 공부 중에는 남의 조각이 점점 선명해지므로 가끔 다시 받는다. 조립 단계에서는 굳어 있다 */
-  stage: 'study' | 'assembly' | null,
+  mine: number[],
+  others: number[],
+  enabled: boolean,
 ) => {
-  return useQuery({
-    queryKey: ['piece-images', remote?.sessionId, stage, positions.join()],
-    queryFn: async (): Promise<PieceImages> => {
+  const queryOf = (position: number, ready: boolean) => ({
+    queryKey: ['piece-image', remote?.sessionId, position],
+    queryFn: () => {
       if (!remote) throw new Error('세션에 들어가 있지 않아요');
-      const entries = await Promise.all(
-        positions.map(async (position) => {
-          const blob = await api.getBlob(
-            `/api/sessions/${remote.sessionId}/pieces/${position}/image`,
-            withToken(remote),
-          );
-          return [position, await toDataUrl(blob)] as const;
-        }),
-      );
-      return { urls: Object.fromEntries(entries), cellAspect: await aspectOf(entries[0][1]) };
+      return loadPieceImage(remote, position);
     },
-    enabled: remote !== null && stage !== null && positions.length > 0,
+    enabled: remote !== null && enabled && ready,
+    // 조립 단계에서는 복원도가 굳어 그림이 바뀌지 않는다
     staleTime: Infinity,
-    refetchInterval: stage === 'study' ? 30_000 : false,
   });
+  const myResults = useQueries({ queries: mine.map((position) => queryOf(position, true)) });
+  // 내 조각을 다 받았거나 받지 못한 것으로 끝났는지
+  const mineSettled = mine.length > 0 && myResults.every((result) => !result.isPending);
+  const otherResults = useQueries({
+    queries: others.map((position) => queryOf(position, mineSettled)),
+  });
+
+  const loaded = [...mine, ...others]
+    .map((position, index) => [position, [...myResults, ...otherResults][index].data] as const)
+    .filter((entry): entry is readonly [number, PieceImage] => entry[1] !== undefined);
+  return {
+    /** 정답 칸 번호별 그림 주소. 받은 것만 들어 있다 */
+    urls: Object.fromEntries(loaded.map(([position, image]) => [position, image.url])) as Record<
+      number,
+      string
+    >,
+    /** 칸 하나의 가로세로 비율. 서버는 사진을 자르지 않고 원래 비율대로 나눈다 */
+    cellAspect: loaded[0]?.[1].aspect,
+    mineSettled,
+    /** 내 조각을 하나도 받지 못했다. 이때는 사진을 직접 잘라 그린다 */
+    failed: mineSettled && myResults.every((result) => result.isError),
+  };
 };
