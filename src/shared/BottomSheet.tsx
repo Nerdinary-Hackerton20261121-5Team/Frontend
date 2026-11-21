@@ -25,7 +25,7 @@ export const BottomSheet = ({ open, onClose, title, children, className }: Botto
   if (!open) return null;
 
   return (
-    <div className='fixed inset-0 z-50 mx-auto flex w-full max-w-[402px] flex-col justify-end bg-overlay-dim'>
+    <div className='fixed inset-0 z-50 mx-auto flex w-full max-w-[402px] flex-col justify-end bg-black/20'>
       <button type='button' aria-label='닫기' onClick={onClose} className='min-h-0 flex-1' />
       <div
         role='dialog'

@@ -21,7 +21,7 @@ export const Progress = ({ step, total = 4, className }: ProgressProps) => {
       className={cn('h-1 w-full overflow-hidden rounded-[2px] bg-bg-subtle', className)}
     >
       <div
-        className='h-full rounded-[2px] bg-brand-primary'
+        className='h-full rounded-[2px] bg-icon-brand'
         style={{ width: `${(current / total) * 100}%` }}
       />
     </div>
