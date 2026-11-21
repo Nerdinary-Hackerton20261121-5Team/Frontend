@@ -15,6 +15,7 @@ export const InvitePage = () => {
   const navigate = useNavigate();
   const { code, session } = useCurrentSession();
   const [invited, setInvited] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const { gone } = useSessionSync();
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
@@ -24,8 +25,15 @@ export const InvitePage = () => {
   const joined = session.members.filter((member) => member.joined).length;
 
   const share = async () => {
+    // 공유 창이 없는 환경(앱의 WebView 등)에서는 링크를 복사해 준다. 그것도 안 되면 방법을 알려 준다
     if (!navigator.share) {
-      if (await copyInviteLink(code)) setInvited(true);
+      const copied = await copyInviteLink(code);
+      setInvited(copied);
+      setNotice(
+        copied
+          ? '초대 링크를 복사했어요. 친구에게 붙여 넣어 보내 주세요.'
+          : '공유할 수 없어요. 위의 링크를 길게 눌러 복사해 주세요.',
+      );
       return;
     }
     try {
@@ -49,6 +57,11 @@ export const InvitePage = () => {
       description={`${session.memberCount}명이 모두 들어오면 공부를 시작할 수 있어요.`}
       footer={
         <>
+          {notice && (
+            <p role='status' className='text-center text-caption-medium text-text-secondary'>
+              {notice}
+            </p>
+          )}
           <Button variant='secondary' onClick={share}>
             링크 공유하기
           </Button>
