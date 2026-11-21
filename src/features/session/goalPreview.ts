@@ -66,14 +66,27 @@ const assignOwners = (order: number[], grid: Grid, people: number, perPerson: nu
   return place(0) ? owners : null;
 };
 
+/**
+ * 판의 조각마다 맡은 사람 번호를 돌려준다. 한 사람의 조각끼리는 가로·세로로 붙지 않는다.
+ * 04 미리보기와 06 공부 화면이 같이 쓴다. 떨어뜨릴 수 없는 판이면 섞은 순서대로 나눈다.
+ */
+export const pieceOwners = (seed: string, grid: Grid, perPerson: number): number[] => {
+  const total = grid.rows * grid.cols;
+  const people = Math.max(1, Math.round(total / perPerson));
+  const order = seededShuffle(seed, total);
+  const owners = assignOwners(order, grid, people, perPerson);
+  if (owners) return owners;
+  const fallback = new Array<number>(total).fill(-1);
+  order.forEach((piece, step) => {
+    fallback[piece] = Math.min(Math.floor(step / perPerson), people - 1);
+  });
+  return fallback;
+};
+
 /** 미리보기 판에서 이 사람이 맡을 조각 번호들. 서로 가로·세로로 붙지 않는다 */
 export const previewPieces = (seed: string, grid: Grid, perPerson: number, member: number) => {
   if (member < 0) return [];
-  const total = grid.rows * grid.cols;
-  const people = Math.round(total / perPerson);
-  const order = seededShuffle(seed, total);
-  const owners = assignOwners(order, grid, people, perPerson);
-  // 떨어뜨릴 수 없는 판이면 섞은 순서대로 나눈다
-  if (!owners) return order.slice(member * perPerson, (member + 1) * perPerson);
-  return order.filter((piece) => owners[piece] === member);
+  return pieceOwners(seed, grid, perPerson).flatMap((owner, piece) =>
+    owner === member ? [piece] : [],
+  );
 };

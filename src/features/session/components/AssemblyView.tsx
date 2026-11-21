@@ -21,6 +21,9 @@ interface AssemblyViewProps {
   grid: Grid;
   timeline: Timeline;
   placed: number[];
+  /** 내가 끼울 조각 번호 */
+  myPieces: number[];
+  /** 마지막으로 조각을 끼운 사람. 누군지 모르면 빈 문자열 */
   lastPlacedBy: string | null;
   onPlace: (index: number) => void;
 }
@@ -31,6 +34,7 @@ export const AssemblyView = ({
   grid,
   timeline,
   placed,
+  myPieces,
   lastPlacedBy,
   onPlace,
 }: AssemblyViewProps) => {
@@ -41,12 +45,14 @@ export const AssemblyView = ({
 
   const total = pieceTotal(grid);
   const myRow = session.members.findIndex((member) => member.isMe);
-  const myPieces = piecesOfRow(myRow, grid);
   const remaining = myPieces.filter((index) => !placed.includes(index));
-  const waitingFor = session.members.find(
-    (member, row) =>
-      !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
-  );
+  // 서버 세션에서는 다른 사람의 조각이 어느 칸인지 알 수 없어 이름을 대지 않는다
+  const waitingFor = session.remote
+    ? undefined
+    : session.members.find(
+        (member, row) =>
+          !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
+      );
 
   const boardHeight = Math.min(BOARD_HEIGHT, area.height);
   const boardWidth = (boardHeight * BOARD_WIDTH) / BOARD_HEIGHT;
@@ -179,16 +185,20 @@ export const AssemblyView = ({
         <span className='text-body-m-medium text-text-primary'>
           {placed.length} / {total}
         </span>
-        {placed.length === 0 || !waitingFor
-          ? `${session.members.length}명이 함께 맞추는 중`
-          : `${waitingFor.name}님 조각을 기다리는 중`}
+        {waitingFor && placed.length > 0
+          ? `${waitingFor.name}님 조각을 기다리는 중`
+          : remaining.length === 0 && placed.length > 0
+            ? '다른 사람의 조각을 기다리는 중'
+            : `${session.members.length}명이 함께 맞추는 중`}
       </p>
       <div className='flex h-[53px] shrink-0 items-start justify-center pt-3 pb-[env(safe-area-inset-bottom)]'>
-        {lastPlacedBy && (
+        {lastPlacedBy !== null && (
           <Toast key={placed.length}>
             {lastPlacedBy === session.members[myRow].name
               ? '내 조각을 끼웠어요'
-              : `${lastPlacedBy}님이 조각을 끼웠어요`}
+              : lastPlacedBy === ''
+                ? '다른 사람이 조각을 끼웠어요'
+                : `${lastPlacedBy}님이 조각을 끼웠어요`}
           </Toast>
         )}
       </div>

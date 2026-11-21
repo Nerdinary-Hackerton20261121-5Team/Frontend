@@ -22,6 +22,8 @@ export type Session = {
   remote: Remote | null;
   /** 서버 세션에서 내가 몇 번째로 들어왔는지. 다른 사람을 번호로 부를 때 쓴다 */
   mySeat: number;
+  /** 서버가 정해 준 내 조각의 칸 번호(왼쪽 위부터 1). 서버 세션이 시작된 뒤에만 있다 */
+  myPositions: number[] | null;
   photoUrl: string;
   /** 개설자가 정한 인원 */
   memberCount: number;

@@ -25,7 +25,8 @@ export const useMockAssembly = () => {
   useEffect(() => {
     const timer = window.setInterval(() => {
       const { session, placed, placePiece } = useSessionStore.getState();
-      if (!session || session.phase !== 'assembly') return;
+      // 서버 세션은 조립판을 서버에서 읽는다
+      if (!session || session.remote || session.phase !== 'assembly') return;
       const grid = gridFor(session.pieceCount, session.members.length);
       for (let index = 0; index < pieceTotal(grid); index += 1) {
         const owner = session.members[ownerRow(index, grid)];
