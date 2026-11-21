@@ -7,7 +7,7 @@ export const NAME_MAX = 10;
 /** 방을 만든 사람의 처음 이름. 대기실에서 바꿀 수 있다 */
 export const HOST_NAME = '개설자';
 /** 목표 시간으로 정할 수 있는 범위(분) */
-// TODO: 테스트하는 동안만 1분까지 받는다. 끝나면 시안의 5분으로 되돌린다
+// 서버의 최소 목표 시간(60초)에 맞춘다. 짧게 한 바퀴 돌려 볼 수 있다
 export const GOAL_MIN = 1;
 export const GOAL_MAX = 180;
 /**
