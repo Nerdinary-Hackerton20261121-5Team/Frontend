@@ -11,6 +11,16 @@ const STEPS = [1, 2, 3, 4];
 export const SharedPreviewPage = () => {
   const [name, setName] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [copyResult, setCopyResult] = useState('');
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyResult(`복사했어요: ${text}`);
+    } catch {
+      setCopyResult('복사하지 못했어요');
+    }
+  };
   // Figma 의 MemberRow 예시에 들어 있는 상태 칩. StatusChip 컴포넌트가 생기면 그것으로 바꾼다
   const chip = (
     <span className='shrink-0 rounded-full bg-status-info-bg px-[10px] py-1 text-caption-medium text-status-info'>
@@ -33,9 +43,18 @@ export const SharedPreviewPage = () => {
           placeholder='이름을 입력해 주세요'
           value={name}
           onChange={(event) => setName(event.target.value)}
-          action={<InputButton>복사</InputButton>}
+          action={
+            <InputButton disabled={name === ''} onClick={() => void copy(name)}>
+              복사
+            </InputButton>
+          }
         />
-        <Input defaultValue='홍길동' action={<InputButton>복사</InputButton>} />
+        <Input
+          readOnly
+          value='focus.app/s/8f2k'
+          action={<InputButton onClick={() => void copy('focus.app/s/8f2k')}>복사</InputButton>}
+        />
+        {copyResult && <p className='text-caption-medium text-text-secondary'>{copyResult}</p>}
         <Input placeholder='버튼 없는 입력 칸' />
       </section>
 
