@@ -56,7 +56,8 @@ interface SessionStore {
   lastPlacedBy: string | null;
 
   setPhoto: (photoUrl: string | null) => void;
-  setSize: (memberCount: number, pieceCount: number) => void;
+  setMemberCount: (memberCount: number) => void;
+  setPieceCount: (pieceCount: number) => void;
   setDraftGoal: (minutes: number) => void;
   /** 고른 값으로 세션을 열고 초대 코드를 돌려준다. entry 가 없으면 서버 없이 흉내 낸 세션이다 */
   openAsHost: (entry: SessionEntry | null) => string;
@@ -95,8 +96,10 @@ export const useSessionStore = create<SessionStore>()(
 
       setPhoto: (photoUrl) => set((state) => ({ draft: { ...state.draft, photoUrl } })),
 
-      setSize: (memberCount, pieceCount) =>
-        set((state) => ({ draft: { ...state.draft, memberCount, pieceCount } })),
+      // 하나씩 바꾼다. 둘을 함께 받으면 빠르게 이어 누를 때 앞에서 고른 값이 옛 값으로 덮인다
+      setMemberCount: (memberCount) => set((state) => ({ draft: { ...state.draft, memberCount } })),
+
+      setPieceCount: (pieceCount) => set((state) => ({ draft: { ...state.draft, pieceCount } })),
 
       setDraftGoal: (goalMinutes) => set((state) => ({ draft: { ...state.draft, goalMinutes } })),
 

@@ -91,13 +91,14 @@ export const useCreateSession = () => {
   });
 };
 
-// 새로고침해도 같은 자리를 돌려받도록 초대 코드마다 요청 ID 를 남겨 둔다
+// 같은 사람이 초대 링크를 다시 열어도 자리를 또 차지하지 않도록, 브라우저에 초대 코드마다 요청 ID 를 남겨 둔다.
+// 서버는 같은 ID 로 다시 오면 새 참가자를 만들지 않고 원래 자리를 돌려준다
 const joinRequestId = (code: string) => {
-  const key = `join-request:${code}`;
-  const saved = sessionStorage.getItem(key);
+  const key = `join-request:${code.toUpperCase()}`;
+  const saved = localStorage.getItem(key);
   if (saved) return saved;
   const created = crypto.randomUUID();
-  sessionStorage.setItem(key, created);
+  localStorage.setItem(key, created);
   return created;
 };
 

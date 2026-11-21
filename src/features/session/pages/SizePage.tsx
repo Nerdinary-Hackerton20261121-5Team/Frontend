@@ -11,7 +11,8 @@ import { useSessionStore } from '../store';
 export const SizePage = () => {
   const navigate = useNavigate();
   const draft = useSessionStore((state) => state.draft);
-  const setSize = useSessionStore((state) => state.setSize);
+  const setMemberCount = useSessionStore((state) => state.setMemberCount);
+  const setPieceCount = useSessionStore((state) => state.setPieceCount);
 
   if (!draft.photoUrl) return <Navigate to='/new/photo' replace />;
 
@@ -35,7 +36,7 @@ export const SizePage = () => {
               <Chip
                 key={count}
                 selected={draft.memberCount === count}
-                onClick={() => setSize(count, draft.pieceCount)}
+                onClick={() => setMemberCount(count)}
               >
                 {count}명
               </Chip>
@@ -49,7 +50,7 @@ export const SizePage = () => {
                 key={count}
                 selected={draft.pieceCount === count}
                 className='px-0'
-                onClick={() => setSize(draft.memberCount, count)}
+                onClick={() => setPieceCount(count)}
               >
                 {count}조각
               </Chip>
