@@ -1,6 +1,12 @@
 # 5팀 프론트엔드
 
-11th NE(O)RDINARY HACKATHON 5팀의 웹 저장소입니다. 모바일 화면을 웹으로 만들어 배포하고, 주최 측 WebView 템플릿으로 감싼 APK를 제출합니다.
+11th NE(O)RDINARY HACKATHON 5팀 **Pocus** 의 웹 저장소입니다. 모바일 화면을 웹으로 만들어 배포하고, 주최 측 WebView 템플릿으로 감싼 APK를 제출합니다.
+
+Pocus 는 여럿이 함께 공부하는 집중 세션입니다. 방장이 사진을 올리고 4~6명을 초대하면 각자 조각 2개를 맡습니다. 카메라로 자리에 있는 것이 확인되는 동안만 공부 시간이 쌓이고, 끝나면 조각을 함께 끼워 사진을 완성합니다. 조각은 각자 집중한 만큼만 선명합니다.
+
+- 운영 https://cmc-11th.bemelon.me
+- dev https://cmc-11th-dev.bemelon.me
+- API 명세 https://cmc-11th.bemelon.me/docs
 
 React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router를 씁니다.
 
@@ -16,7 +22,23 @@ npm run lint
 npm run format
 ```
 
-첫 화면은 서버의 `GET /api` 를 호출해 연결을 확인합니다. 백엔드 저장소에서 `npm run start:dev` 로 서버(3000)를 띄우면 "서버와 연결됐어요"가 보입니다. 서버 주소는 `.env.development` 의 `VITE_API_BASE_URL` 입니다.
+로컬에서는 백엔드 저장소에서 `npm run start:dev` 로 서버(3000)를 띄웁니다. 서버 주소는 `.env.development` 의 `VITE_API_BASE_URL` 입니다. 배포된 웹은 서버와 같은 주소라 `/api/...` 로 바로 부릅니다.
+
+## 화면과 서버 연동
+
+모든 세션 데이터는 서버에서 옵니다. 프론트에서 만들어 내는 데이터는 없습니다. 호출은 `src/features/session/api.ts` 한 파일에 모여 있습니다.
+
+| 화면 | 쓰는 API |
+| --- | --- |
+| 02 사진, 02-2 인원, 04 목표 시간 | `POST /api/sessions` 방 만들기, `POST /api/images` 사진 업로드, `PATCH /api/sessions/{id}/image` 방 사진 지정 |
+| 01 세션 참여하기, 03-B 초대받은 입장 | `POST /api/sessions/join` 입장, `PATCH /api/sessions/{id}/participants/me` 이름, `DELETE /api/sessions/{id}/participants/me` 나가기 |
+| 03-A 초대, 05-2 대기실 | `GET /api/sessions/{id}` 명단과 단계(2초마다), `POST /api/sessions/{id}/start` 시작 |
+| 06 공부 중, 07 함께 하는 사람, 08 일시정지 | `POST /api/sessions/{id}/heartbeat` 얼굴 인식 상태(바뀌면 바로, 평소 3초마다), `GET /api/sessions/{id}/board` 진행판(3초마다), `POST /api/sessions/{id}/end` 방장 조기 종료 |
+| 09 퍼즐 맞추기, 완성 | `GET /api/sessions/{id}/assembly` 조립판(1.5초마다), `PATCH /api/sessions/{id}/assembly/pieces/{pieceId}` 조각 놓기, `GET /api/sessions/{id}/pieces/{position}/image` 조각 그림, `GET /api/sessions/{id}/result` 공부 결과, `DELETE /api/sessions/{id}` 방 삭제 |
+
+참가자는 로그인 없이 방을 만들거나 들어올 때 받은 토큰을 `X-Participant-Token` 헤더로 보냅니다. 서버는 `{ success, code, message, data }` 로 응답하고 `src/lib/api.ts` 가 실패를 `ApiError` 로 바꿉니다.
+
+얼굴 인식은 기기 안에서만 돕니다(MediaPipe). 영상은 서버로 가지 않고, "자리에 있음, 자리 비움, 일시정지" 상태만 heartbeat 로 보냅니다.
 
 ## 구조
 
@@ -33,9 +55,8 @@ src
 └── features
     ├── attention           카메라로 자리에 있는지 판정
     └── session             세션 화면 (진입, 만들기, 대기실, 공부, 결과)
-        ├── api.ts          React Query 훅 (사진 업로드)
-        ├── store.ts        세션 상태
-        ├── mock.ts         세션 서버 API 가 생기기 전까지 쓰는 임시 동작
+        ├── api.ts          서버 호출과 React Query 훅 (세션 API 전체)
+        ├── store.ts        세션 상태. 서버에서 읽은 값을 화면에 맞춰 들고 있는다
         ├── pages           화면 하나에 파일 하나
         └── components      화면 안의 조각
 ```
@@ -132,7 +153,7 @@ Argo CD 가 그 커밋을 감지해 롤링 업데이트
 
 - APK를 다시 빌드하는 경우는 앱 이름, 아이콘, 패키지명, 스플래시, 접속 주소를 바꿀 때뿐입니다. 접속 주소를 이 주소로 바꾼 뒤에는 한 번 다시 빌드해야 합니다(주최 측 템플릿에서 팀이 직접 합니다. 이 레포 밖 작업입니다).
 - 앱에서는 `https` 주소만 열립니다. 서버 주소도 `https` 여야 합니다.
-- 웹에서 안 되는 기능은 앱에서도 안 됩니다. 앱이 백그라운드로 가거나 화면이 꺼지면 웹 코드가 멈추므로, 타이머는 시작 시각을 저장해 계산합니다.
+- 웹에서 안 되는 기능은 앱에서도 안 됩니다. 앱이 백그라운드로 가거나 화면이 꺼지면 웹 코드가 멈추므로, 공부 시간은 서버가 heartbeat 로 세고 화면은 그 값을 따릅니다.
 
 ## 웹 파트 심사 기준
 
