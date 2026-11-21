@@ -4,10 +4,8 @@ import { Chip } from '@/shared/Chip';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { StepLayout } from '../components/StepLayout';
+import { MEMBER_COUNTS, PIECE_COUNTS } from '../limits';
 import { useSessionStore } from '../store';
-
-const MEMBER_COUNTS = [4, 5, 6];
-const PIECE_COUNTS = [6, 12, 24];
 
 /** 02-2 인원과 퍼즐 조각 수 */
 export const SizePage = () => {

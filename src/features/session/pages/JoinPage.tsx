@@ -8,6 +8,7 @@ import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { JigsawBoard } from '../components/JigsawBoard';
 import { StepLayout } from '../components/StepLayout';
+import { readInvite } from '../invite';
 import { NAME_MAX } from '../limits';
 import { useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
@@ -26,16 +27,16 @@ export const JoinPage = () => {
   const [name, setName] = useState('');
   useSessionSync();
 
-  const photoUrl = params.get('photo');
-  const pieces = Number(params.get('pieces'));
+  // 링크에 실려 온 값은 누구나 바꿀 수 있으므로 확인한 것만 쓴다
+  const { photoUrl, pieceCount } = readInvite(params);
 
   useEffect(() => {
     if (session) return;
-    const invite = { photoUrl, pieceCount: pieces || null };
+    const invite = { photoUrl, pieceCount };
     if (join.data) openAsGuest(code, join.data, invite);
     // TODO(mock): 세션 API 가 없는 서버에서는 흉내 낸 세션으로 들어간다
     else if (join.error && shouldUseMock(join.error)) openAsGuest(code, null, invite);
-  }, [session, join.data, join.error, code, photoUrl, pieces, openAsGuest]);
+  }, [session, join.data, join.error, code, photoUrl, pieceCount, openAsGuest]);
 
   // 없는 코드, 이미 시작한 방, 정원이 찬 방은 들어갈 수 없다
   if (!session && join.error && !shouldUseMock(join.error)) {
