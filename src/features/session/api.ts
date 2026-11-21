@@ -200,6 +200,21 @@ export const useBoard = (remote: Remote | null, enabled: boolean) => {
   });
 };
 
+/**
+ * 모두의 공부를 지금 끝내고 퍼즐 맞추기로 넘긴다. 만든 사람만 할 수 있다.
+ * 방을 지우는 useEndSession 과 다르다. 이미 끝났으면 서버가 처음 끝난 시각을 그대로 돌려준다.
+ */
+export const useEndFocus = () => {
+  return useMutation({
+    mutationFn: (remote: Remote) =>
+      api.post<{ sessionId: number; status: SessionStatus; alreadyEnded: boolean }>(
+        `/api/sessions/${remote.sessionId}/end`,
+        undefined,
+        withToken(remote),
+      ),
+  });
+};
+
 /** 방을 끝내고 서버의 자료를 지운다. 만든 사람만 할 수 있다 */
 export const useEndSession = () => {
   return useMutation({
