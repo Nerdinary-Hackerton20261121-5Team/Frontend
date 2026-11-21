@@ -166,6 +166,22 @@ export const useJoinSession = (code: string, enabled: boolean) => {
   });
 };
 
+/**
+ * 시트에 적은 참여 코드로 들어가 본다. 성공하면 받은 자리를 입장 쿼리에 넣어 두어 03-B 가 같은 요청을 다시 보내지 않게 한다.
+ * 요청 ID 가 링크로 들어올 때와 같아서 다시 열어도 자리를 또 차지하지 않는다.
+ */
+export const useJoinByCode = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      api.post<SessionEntry>('/api/sessions/join', {
+        sessionCode: code,
+        clientRequestId: joinRequestId(code),
+      }),
+    onSuccess: (entry, code) => queryClient.setQueryData(['session-join', code], entry),
+  });
+};
+
 /** 시작 전까지 인원과 단계를 2초마다 다시 읽는다 */
 export const useSessionDetail = (remote: Remote | null, enabled: boolean) => {
   return useQuery({
