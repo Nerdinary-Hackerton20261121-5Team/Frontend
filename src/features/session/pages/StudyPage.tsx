@@ -3,6 +3,7 @@ import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
+import { Button } from '@/shared/Button';
 import { useBoard, useEndFocus, useHeartbeat, usePieceImages } from '../api';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
@@ -100,8 +101,9 @@ export const StudyPage = () => {
     ? ownersFromServer(pieceTotal(grid), mySlots, myIndex, session.members.length, perPerson)
     : pieceOwners(code, grid, perPerson);
   const me = session.members[myIndex];
-  // 만든 사람이 끝내면 서버에서 모두의 공부를 끝낸다. 다른 사람은 heartbeat 로 알아채고 따라 넘어온다.
-  // 참가자가 끝내면 자기 공부만 멈춘다. 연결이 끊긴 것으로 처리돼 그때까지의 복원도로 굳는다
+  // 공부를 끝내는 것은 만든 사람만 한다. 서버에서 모두의 공부가 끝나고, 다른 사람은 heartbeat 로 알아채 따라 넘어온다.
+  // 참가자가 혼자 넘어가면 서버는 아직 공부 중이라 조각을 끼울 수 없다
+  const canFinish = !session.remote || session.remote.isCreator;
   const finish = () => {
     if (!session.remote?.isCreator) return finishStudy();
     endFocus.mutate(session.remote, { onSettled: finishStudy });
@@ -153,16 +155,20 @@ export const StudyPage = () => {
             setPeopleOpen(false);
             setPaused(true);
           }}
-          onFinish={finish}
+          onFinish={canFinish ? finish : undefined}
         />
       )}
       <BottomSheet open={paused} onClose={() => setPaused(false)}>
-        <SheetActions
-          cancelLabel='다시 시작'
-          confirmLabel='종료'
-          onCancel={() => setPaused(false)}
-          onConfirm={finish}
-        />
+        {canFinish ? (
+          <SheetActions
+            cancelLabel='다시 시작'
+            confirmLabel='종료'
+            onCancel={() => setPaused(false)}
+            onConfirm={finish}
+          />
+        ) : (
+          <Button onClick={() => setPaused(false)}>다시 시작</Button>
+        )}
       </BottomSheet>
     </div>
   );
