@@ -23,10 +23,13 @@ npm run format
 ```
 src
 ├── App.tsx                 라우트 목록
-├── index.css               디자인 토큰 (색, 폰트)
+├── index.css               전역 스타일, styles import
+├── styles                  디자인 토큰 (colors.css, typography.css)
 ├── lib
-│   └── api.ts              서버 호출, ApiError
-├── components              Screen, Button, TextField, 상태 화면
+│   ├── api.ts              서버 호출, ApiError
+│   └── cn.ts               클래스 합치기 (clsx + tailwind-merge)
+├── shared                  디자인 시스템 공통 컴포넌트 (Button, Header)
+├── components              TextField, 상태 화면
 └── features
     └── home                서버 연결 확인 화면. 실제 첫 화면으로 바꾼다
         ├── api.ts          React Query 훅
@@ -36,12 +39,12 @@ src
 ## 새 화면을 추가하는 순서
 
 1. `src/features/{이름}/api.ts` 에 타입과 훅을 만든다. 서버 명세(`/docs`)의 필드 이름을 그대로 쓴다.
-2. 화면 컴포넌트를 `Screen` 으로 감싸서 만든다.
+2. 화면 컴포넌트 맨 위에 `Header` 를 두고, 내용은 `main` 안에 만든다.
 3. 조회 화면에는 `LoadingView`, `EmptyView`, `ErrorView` 를 모두 넣는다.
 4. `src/App.tsx` 에 라우트를 추가한다.
 5. 서버에 연결해 정상, 빈 목록, 서버 중단 세 경우를 직접 확인한다.
 
-디자인 시스템이 나오면 `src/index.css` 의 `@theme` 값을 먼저 바꿉니다. AI 도구용 규칙은 `AGENTS.md` 에 있습니다.
+디자인 토큰은 `src/styles` 의 `@theme` 값을 바꿉니다. AI 도구용 규칙은 `AGENTS.md` 에 있습니다.
 
 ## 협업 규칙
 
