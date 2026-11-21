@@ -68,6 +68,7 @@ Back_End · Frontend · cluster-config 세 레포 README가 같은 표를 쓴다
 |---|---|
 | 서비스 주소 | https://cmc-11th.bemelon.me (FE와 API가 같은 origin) |
 | API · 헬스체크 | https://cmc-11th.bemelon.me/api · https://cmc-11th.bemelon.me/api/health → 200 `{"status":"ok","commit":"<배포된 커밋 sha>"}` |
+| 브랜치 흐름 | 기능 브랜치 → PR(base `main`, 승인 1명) → `main` 머지. `main` 직접 push는 하지 않는다(cluster-config 제외) |
 | 배포 | 앱 레포(Back_End·Frontend) `main` 머지 → GitHub Actions `Deploy`(main 전용) → 이미지 `registry.bemelon.me/cmc-11th/back_end:<커밋 sha>`(BE) 또는 `.../frontend:<커밋 sha>`(FE) push → [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config)에 `deploy(be)` 또는 `deploy(fe)` 커밋 → Argo CD가 자동 반영(보통 1~3분). 서버에 직접 올리는 일은 없다 |
 | 롤백 | cluster-config에서 해당 `deploy(...)` 커밋을 `git revert` 후 push (force push 금지). 앱 코드는 별도 PR로 고친다 |
 | 상태·로그 | https://cmc-11th-argocd.bemelon.me · 계정 `cmc-11th` · 비밀번호는 운영자에게. 앱 4개(`be`·`fe`·`gateway`·`mysql`)의 상태 조회·SYNC·파드 로그만 가능하다 |
@@ -75,16 +76,20 @@ Back_End · Frontend · cluster-config 세 레포 README가 같은 표를 쓴다
 
 ### DB 외부 접속
 
-노트북의 MySQL 클라이언트(DBeaver·DataGrip·`mysql` CLI)로 운영 DB에 붙는 방법은 두 가지다. 사용자 `app`, 데이터베이스 `app`, 비밀번호는 운영자에게 받는다. 비밀번호를 레포·이슈·PR·공개 채팅에 쓰지 않는다. 백업이 없으니 `DROP`·대량 `DELETE` 전에 한 번 더 확인한다.
+노트북의 MySQL 클라이언트(DBeaver·DataGrip·`mysql` CLI)로 운영 DB에 붙는 방법은 두 가지다. 사용자 `app`, 데이터베이스 `app`, 비밀번호는 운영자에게 받는다. 비밀번호는 `.env` 같은 로컬 파일에만 두고 레포·이슈·PR·공개 채팅에 쓰지 않는다(이 주소는 인터넷에 열려 있고 보호막은 비밀번호뿐이다. 새어 나가면 바로 운영자에게 알린다). 백업이 없으니 `DROP`·대량 `DELETE` 전에 한 번 더 확인한다. 해커톤이 끝나면 닫힌다.
 
-1. **cloudflared** (누구나, 비밀번호만 있으면 된다). 터미널 하나를 켜 둔 채로 쓴다.
+1. **cloudflared** (누구나, 비밀번호만 있으면 된다). 설치는 macOS `brew install cloudflared`, Windows `winget install --id Cloudflare.cloudflared`. 터미널 하나를 켜 둔 채로 쓴다.
 
    ```sh
    cloudflared access tcp --hostname cmc-11th-db.bemelon.me --url 127.0.0.1:13306
    mysql -h 127.0.0.1 -P 13306 -u app -p app    # 다른 터미널에서
    ```
 
-2. **Tailscale** (운영자가 `bemelon` 노드를 공유한 사람만). 현재 준비 중이다. 접속이 열리면 이 줄에 방법이 적힌다.
+2. **Tailscale** (운영자가 `bemelon` 노드를 공유한 사람만). Tailscale 앱을 켠 상태(tailnet 안)에서만 열리고 cloudflared 없이 바로 접속한다. 이름이 안 풀리면 호스트에 `100.105.208.85`를 쓴다.
+
+   ```sh
+   mysql -h bemelon.tailc71c61.ts.net -P 30306 -u app -p app
+   ```
 
 ## 배포 상세 (Frontend)
 

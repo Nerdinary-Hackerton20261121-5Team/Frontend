@@ -57,7 +57,7 @@
 
 ### 브랜치·PR
 
-- `main` 에 직접 push하지 않는다. `feat/작업명`, `fix/작업명`, `docs/작업명` 같은 브랜치에서 작업하고 PR로 합친다. force push·rebase로 공유 이력을 고치지 않는다.
+- `main` 에 직접 push하지 않는다. `feat/작업명`, `fix/작업명`, `docs/작업명` 브랜치에서 작업하고 **base를 `main`으로 해서 PR**을 연다. force push·rebase로 공유 이력을 고치지 않는다.
 - 커밋은 기능 단위로 나누고 `종류: 내용` 형식(`feat`·`fix`·`style`·`refactor`·`chore`·`docs`)을 쓴다. PR 본문은 `.github/pull_request_template.md` 양식을 채우고 관련 이슈는 `closes #번호` 로 잇는다.
 - PR을 열기 전에 `npm run lint` 와 `npm run build` 를 통과시킨다. 같은 검사(`CI`)가 PR에서 자동으로 돌고, 팀원 한 명이 확인한 뒤 합친다.
 - 커밋·PR에 AI 공동작성자(Co-Authored-By)나 에이전트 도구 표기를 넣지 않는다.
