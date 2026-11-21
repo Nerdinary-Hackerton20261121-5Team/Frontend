@@ -62,9 +62,34 @@ src
 
 ## 배포
 
-- 배포 주소는 https://neordinary-hackathon-web.vercel.app 입니다. APK도 이 주소를 띄웁니다.
-- `main` 에 합쳐지면 Vercel이 자동으로 배포합니다. PR에는 PR별 미리보기 주소가 붙습니다.
+배포 주소는 두 곳입니다.
+
+| 주소 | 용도 | 배포 방식 |
+| ---- | ---- | --------- |
+| https://neordinary-hackathon-web.vercel.app | APK가 띄우는 주소 | `main` 에 합쳐지면 Vercel이 자동 배포. PR에는 PR별 미리보기 주소가 붙습니다. |
+| https://cmc-11th.bemelon.me | 홈서버(k3s). FE와 API가 같은 origin | `main` 에 합쳐지면 GitHub Actions가 자동 배포 |
+
+### Vercel
+
 - 서버 주소는 Vercel 프로젝트의 환경변수 `VITE_API_BASE_URL` 로 넣습니다. 값을 바꾼 뒤에는 다시 배포해야 반영됩니다.
+- **Vercel의 FE가 홈서버 API를 부르게 하려면 `VITE_API_BASE_URL=https://cmc-11th.bemelon.me` 로 바꾸고 재배포합니다.** Vercel 설정은 이 저장소에서 바꿀 수 없으므로 운영자나 팀원이 Vercel에서 직접 설정합니다.
+- PR 미리보기 주소(`*-git-*.vercel.app`)는 서버의 CORS 허용 목록에 없습니다. 미리보기에서는 서버 호출이 막히므로 API 연동은 로컬이나 `main` 배포에서 확인합니다.
+
+### 홈서버 (https://cmc-11th.bemelon.me)
+
+```
+main 에 합쳐짐
+  └─ .github/workflows/deploy.yml
+       ├─ Dockerfile 로 이미지 빌드 (linux/amd64) → ghcr.io/nerdinary-hackerton20261121-5team/frontend:<커밋 sha>
+       └─ cluster-config 의 deploy-image 호출 (app=fe) → 이미지 태그 커밋 "deploy(fe): ..."
+Argo CD 가 그 커밋을 감지해 롤링 업데이트
+```
+
+- 이미지는 `node:22-alpine` 에서 빌드한 정적 파일을 `nginx:1.27-alpine` 이 80 포트로 서빙합니다. 설정은 `deploy/nginx.conf` 이고, 없는 경로는 `index.html` 로 보냅니다.
+- 같은 origin이라 이 빌드에서는 `VITE_API_BASE_URL` 을 빈 값으로 두고 `/api/...` 를 부릅니다. gateway가 `/api` 는 서버로, 나머지는 FE로 보냅니다.
+- `main` 이 아닌 브랜치에서는 배포되지 않습니다. 배포 워크플로는 `CLUSTER_CONFIG_DEPLOY_KEY` 레포 secret을 씁니다.
+- 되돌릴 때는 [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config) 에서 해당 `deploy(fe)` 커밋을 revert 합니다.
+- 로컬에서 이미지를 확인하려면 `docker build --platform linux/amd64 -t frontend .` 후 `docker run -p 8080:80 frontend` 를 실행합니다.
 
 ## 앱(APK)
 
