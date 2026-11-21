@@ -5,6 +5,7 @@ import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { StepLayout } from '../components/StepLayout';
 import { MEMBER_COUNTS, PIECE_COUNTS } from '../limits';
+import { getPickedPhoto } from '../pickedPhoto';
 import { useSessionStore } from '../store';
 
 /** 02-2 인원과 퍼즐 조각 수 */
@@ -14,7 +15,7 @@ export const SizePage = () => {
   const setMemberCount = useSessionStore((state) => state.setMemberCount);
   const setPieceCount = useSessionStore((state) => state.setPieceCount);
 
-  if (!draft.photoUrl) return <Navigate to='/new/photo' replace />;
+  if (!draft.photoUrl || !getPickedPhoto()) return <Navigate to='/new/photo' replace />;
 
   return (
     <StepLayout
