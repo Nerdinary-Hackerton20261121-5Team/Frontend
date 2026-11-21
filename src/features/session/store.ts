@@ -17,9 +17,6 @@ type Draft = {
   requestId: string;
 };
 
-/** 초대 링크에 실려 온 값. 서버가 아직 세션의 사진과 조각 수를 주지 않아 링크로 넘긴다 */
-export type Invite = { photoUrl: string | null; pieceCount: number | null };
-
 const freshDraft = (): Draft => ({
   photoUrl: null,
   memberCount: 6,
@@ -68,9 +65,9 @@ interface SessionStore {
   setPieceCount: (pieceCount: number) => void;
   setDraftGoal: (minutes: number) => void;
   /** 고른 값으로 세션을 열고 초대 코드를 돌려준다. entry 가 없으면 서버 없이 흉내 낸 세션이다 */
-  openAsHost: (entry: SessionEntry | null) => string;
+  openAsHost: (entry: SessionEntry | null, photoUrl?: string | null) => string;
   /** 초대 링크로 들어온 사람의 세션을 연다. 이름은 rename 으로 나중에 정한다 */
-  openAsGuest: (code: string, entry: SessionEntry | null, invite: Invite) => void;
+  openAsGuest: (code: string, entry: SessionEntry | null) => void;
   /** 서버에서 읽은 인원, 목표 시간, 단계를 반영한다 */
   syncRemote: (detail: SessionDetail) => void;
   /** 서버 진행판의 자리 순서와 공개된 복원도를 반영한다 */
@@ -130,7 +127,7 @@ export const useSessionStore = create<SessionStore>()(
           },
         })),
 
-      openAsHost: (entry) => {
+      openAsHost: (entry, photoUrl) => {
         const { draft } = get();
         const code = entry?.sessionCode ?? randomCode();
         set({
@@ -139,7 +136,8 @@ export const useSessionStore = create<SessionStore>()(
             remote: remoteOf(entry),
             mySeat: 0,
             myPositions: null,
-            photoUrl: draft.photoUrl ?? mockPhoto(),
+            // 서버에 올라간 주소가 있으면 그것을, 없으면 고른 사진의 미리보기를 쓴다
+            photoUrl: photoUrl ?? draft.photoUrl ?? mockPhoto(),
             memberCount: draft.memberCount,
             pieceCount: draft.pieceCount,
             goalMinutes: draft.goalMinutes,
@@ -154,7 +152,7 @@ export const useSessionStore = create<SessionStore>()(
         return code;
       },
 
-      openAsGuest: (code, entry, invite) => {
+      openAsGuest: (code, entry) => {
         // 서버가 없으면 이미 몇 명이 들어와 있는 세션을 흉내 낸다
         const others = entry ? [] : [MOCK_INVITE.hostName, ...MOCK_INVITE.joinedNames];
         set({
@@ -163,9 +161,10 @@ export const useSessionStore = create<SessionStore>()(
             remote: remoteOf(entry),
             mySeat: others.length,
             myPositions: null,
-            photoUrl: invite.photoUrl ?? mockPhoto(),
+            // 방의 사진은 세션 조회에서 받아 온다. 그 전까지는 임시 그림을 둔다
+            photoUrl: mockPhoto(),
             memberCount: MOCK_INVITE.memberCount,
-            pieceCount: invite.pieceCount ?? 12,
+            pieceCount: 12,
             goalMinutes: 50,
             members: [
               ...others.map((other, index) =>
@@ -206,6 +205,7 @@ export const useSessionStore = create<SessionStore>()(
           const synced: Session = {
             ...session,
             remote: { ...session.remote, isCreator },
+            photoUrl: detail.image?.url ?? session.photoUrl,
             mySeat,
             memberCount: capacity,
             goalMinutes: Math.max(1, Math.round(detail.goalSeconds / 60)),

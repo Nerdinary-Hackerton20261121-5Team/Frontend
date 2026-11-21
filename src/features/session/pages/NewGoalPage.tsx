@@ -5,6 +5,7 @@ import { Chip } from '@/shared/Chip';
 import { shouldUseMock, useCreateSession } from '../api';
 import { Accent } from '../components/Accent';
 import { GoalPreview } from '../components/GoalPreview';
+import { getPickedPhoto } from '../pickedPhoto';
 import { StepLayout } from '../components/StepLayout';
 import { TimeSheet } from '../components/TimeSheet';
 import { useSessionStore } from '../store';
@@ -21,8 +22,6 @@ export const NewGoalPage = () => {
   const create = useCreateSession();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  if (!draft.photoUrl) return <Navigate to='/new/photo' replace />;
-
   const custom = !PRESETS.includes(draft.goalMinutes);
 
   // 초대 화면에서 뒤로 왔다가 값을 바꾸지 않고 다시 누르면 이미 만든 방으로 돌아간다.
@@ -35,6 +34,11 @@ export const NewGoalPage = () => {
     session.memberCount === draft.memberCount &&
     session.pieceCount === draft.pieceCount;
 
+  // 새로고침하면 고른 사진 파일이 사라진다. 이미 만든 방이 없으면 사진부터 다시 고른다
+  if (!draft.photoUrl || (!getPickedPhoto() && !reusable)) {
+    return <Navigate to='/new/photo' replace />;
+  }
+
   const next = () => {
     if (reusable) return navigate(`/s/${session.code}/invite`);
     create.mutate(
@@ -43,9 +47,10 @@ export const NewGoalPage = () => {
         maxParticipants: draft.memberCount,
         // 이전 버전에서 만든 값이 남아 있으면 요청 ID 가 없을 수 있다
         clientRequestId: draft.requestId ?? crypto.randomUUID(),
+        photo: getPickedPhoto(),
       },
       {
-        onSuccess: (entry) => navigate(`/s/${openAsHost(entry)}/invite`),
+        onSuccess: ({ entry, photoUrl }) => navigate(`/s/${openAsHost(entry, photoUrl)}/invite`),
         onError: (error) => {
           if (shouldUseMock(error)) navigate(`/s/${openAsHost(null)}/invite`);
         },

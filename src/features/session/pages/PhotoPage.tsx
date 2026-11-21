@@ -3,30 +3,26 @@ import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/shared/Button';
 import { Toast } from '@/shared/Toast';
-import { useUploadPhoto } from '../api';
 import { Accent } from '../components/Accent';
 import { PhotoPicker } from '../components/PhotoPicker';
 import { PhotoReady } from '../components/PhotoReady';
-import { PhotoUploading } from '../components/PhotoUploading';
 import { StepLayout } from '../components/StepLayout';
+import { getPickedPhoto, setPickedPhoto } from '../pickedPhoto';
 import { useSessionStore } from '../store';
 
-/** 02 사진 올리기. 사진을 골라 서버에 올리고, 올라간 사진을 확인한다. */
+/** 서버가 받는 사진 크기의 한도 */
+const MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * 02 사진 올리기. 퍼즐로 만들 사진을 고르고 확인한다.
+ * 서버는 방을 만든 뒤에만 사진을 받으므로, 여기서는 고른 사진을 들고 있다가 방을 만들 때 올린다.
+ */
 export const PhotoPage = () => {
   const navigate = useNavigate();
+  const preview = useSessionStore((state) => state.draft.photoUrl);
   const setPhoto = useSessionStore((state) => state.setPhoto);
-  const upload = useUploadPhoto();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [percent, setPercent] = useState(0);
   const [failed, setFailed] = useState(false);
-
-  // 서버가 진행률을 알려 주지 않아서, 올리는 동안 막대가 천천히 차오르게만 한다
-  useEffect(() => {
-    if (!upload.isPending) return;
-    const timer = window.setInterval(() => setPercent((value) => value + (92 - value) * 0.12), 200);
-    return () => window.clearInterval(timer);
-  }, [upload.isPending]);
 
   useEffect(() => {
     if (!failed) return;
@@ -38,22 +34,20 @@ export const PhotoPage = () => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    // 사진이 아니거나 너무 큰 파일은 서버가 받지 않는다
+    if (!file.type.startsWith('image/') || file.size > MAX_BYTES) {
+      setFailed(true);
+      return;
+    }
     if (preview) URL.revokeObjectURL(preview);
-    setPreview(URL.createObjectURL(file));
-    setPercent(0);
+    setPickedPhoto(file);
+    setPhoto(URL.createObjectURL(file));
     setFailed(false);
-    upload.mutate(file, {
-      onSuccess: (image) => setPhoto(image.url),
-      onError: () => {
-        setPhoto(null);
-        setPreview(null);
-        setFailed(true);
-      },
-    });
   };
 
   const openPicker = () => inputRef.current?.click();
-  const ready = upload.isSuccess && preview !== null;
+  // 새로고침으로 파일이 사라졌으면 다시 고르게 한다
+  const ready = preview !== null && getPickedPhoto() !== null;
 
   return (
     <StepLayout
@@ -94,13 +88,7 @@ export const PhotoPage = () => {
     >
       <input ref={inputRef} type='file' accept='image/*' hidden onChange={pick} />
       <div className='flex flex-col gap-3'>
-        {ready ? (
-          <PhotoReady src={preview} />
-        ) : upload.isPending && preview ? (
-          <PhotoUploading src={preview} percent={Math.round(percent)} />
-        ) : (
-          <PhotoPicker onPick={openPicker} />
-        )}
+        {ready ? <PhotoReady src={preview} /> : <PhotoPicker onPick={openPicker} />}
         {!ready && (
           <p className='text-caption-medium text-text-tertiary'>
             이 사진으로 만든 결과가 함께하는 사람에게 보여요.
