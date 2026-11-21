@@ -13,7 +13,7 @@ interface StudyHudProps {
   onOpenPeople: () => void;
 }
 
-/** 공부 화면 아래의 막대. 내 카메라, 기록된 시간, 함께하는 사람 수가 있다. */
+/** 공부 화면 사진 아래의 막대. 내 카메라, 기록된 시간, 함께하는 사람 수가 있다. */
 export const StudyHud = ({
   videoRef,
   focused,
@@ -24,7 +24,7 @@ export const StudyHud = ({
 }: StudyHudProps) => {
   const ratio = Math.min(focused / (goalMinutes * 60), 1);
   return (
-    <div className='absolute inset-x-5 bottom-[calc(32px+env(safe-area-inset-bottom))] flex h-[68px] items-center gap-3 rounded-[22px] bg-bg-surface py-2 pr-4 pl-2 shadow-[0_8px_24px_rgba(0,0,0,0.18)]'>
+    <div className='mx-5 mt-[18px] mb-[calc(32px+env(safe-area-inset-bottom))] flex h-[68px] shrink-0 items-center gap-3 rounded-[22px] bg-bg-surface py-2 pr-4 pl-2'>
       <div className='relative h-[52px] w-10 shrink-0 overflow-hidden rounded-[12px] bg-bg-inverse'>
         <CameraView videoRef={videoRef} className='size-full' />
         <span
