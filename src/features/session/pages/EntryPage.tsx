@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import illustration from '@/assets/images/entry-illustration.png';
-import shadow from '@/assets/images/entry-shadow.png';
+import illustration from '@/assets/images/entry-illustration.svg';
+import shadow from '@/assets/images/entry-shadow.svg';
 import { useCameraStore } from '@/features/attention/camera';
 import { Button } from '@/shared/Button';
 import { Accent } from '../components/Accent';
