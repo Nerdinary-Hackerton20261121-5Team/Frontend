@@ -7,7 +7,8 @@ import { JigsawBoard } from '../components/JigsawBoard';
 import { StepLayout } from '../components/StepLayout';
 import { TimeSheet } from '../components/TimeSheet';
 import { useMockJoins } from '../mock';
-import { gridFor, ownerRow, pieceTotal } from '../puzzle';
+import { previewGrid, previewPieces } from '../goalPreview';
+import { gridFor, pieceTotal } from '../puzzle';
 import { useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
 
@@ -24,7 +25,13 @@ export const GoalPage = () => {
   if (!session) return <Navigate to={`/s/${code}`} replace />;
 
   const grid = gridFor(session.pieceCount, session.memberCount);
-  const myRow = session.members.findIndex((member) => member.isMe);
+  const board = previewGrid(pieceTotal(grid));
+  const myPieces = previewPieces(
+    code,
+    pieceTotal(board),
+    grid.cols,
+    session.members.findIndex((member) => member.isMe),
+  );
   const custom = !PRESETS.includes(session.goalMinutes);
 
   return (
@@ -45,8 +52,8 @@ export const GoalPage = () => {
           <JigsawBoard
             width={220}
             height={220}
-            grid={grid}
-            look={(index) => (ownerRow(index, grid) === myRow ? 'brand' : 'slot')}
+            grid={board}
+            look={(index) => (myPieces.includes(index) ? 'brand' : 'slot')}
             outlineClassName={() => 'stroke-brand-primary stroke-[1.5]'}
           />
         </div>
