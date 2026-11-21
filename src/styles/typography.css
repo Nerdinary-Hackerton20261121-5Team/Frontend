@@ -1,5 +1,8 @@
 /* Figma Typography 텍스트 스타일. text-body-l-bold 처럼 클래스 하나로 크기·행간·굵기·자간이 함께 들어간다. */
 @theme {
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
   --text-display: 48px;
   --text-display--line-height: 1.2;
   --text-display--font-weight: 700;

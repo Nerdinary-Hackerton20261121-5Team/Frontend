@@ -16,7 +16,7 @@ export const HomePage = () => {
       {greeting.isSuccess && (
         <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
           <p className="text-base font-semibold">서버와 연결됐어요</p>
-          <p className="text-sm text-sub">{greeting.data}</p>
+          <p className="text-sm text-text-secondary">{greeting.data}</p>
         </div>
       )}
     </Screen>
