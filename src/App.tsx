@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HashRouter, Route, Routes } from 'react-router'
 import { NotFoundPage } from '@/components/NotFoundPage'
+import { CameraTestPage } from '@/features/attention/CameraTestPage'
 import { HomePage } from '@/features/home/HomePage'
 
 const queryClient = new QueryClient({
@@ -14,6 +15,8 @@ export const App = () => {
       <HashRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          {/* 카메라 판정 확인용. 서비스 흐름에서는 들어올 길이 없다 */}
+          <Route path="/camera-test" element={<CameraTestPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </HashRouter>
