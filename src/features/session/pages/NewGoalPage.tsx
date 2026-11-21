@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Button } from '@/shared/Button';
 import { Chip } from '@/shared/Chip';
-import { shouldUseMock, useCreateSession } from '../api';
+import { useCreateSession } from '../api';
 import { Accent } from '../components/Accent';
 import { GoalPreview } from '../components/GoalPreview';
 import { HOST_NAME } from '../limits';
@@ -53,9 +53,6 @@ export const NewGoalPage = () => {
       },
       {
         onSuccess: ({ entry, photoUrl }) => navigate(`/s/${openAsHost(entry, photoUrl)}/invite`),
-        onError: (error) => {
-          if (shouldUseMock(error)) navigate(`/s/${openAsHost(null)}/invite`);
-        },
       },
     );
   };
@@ -73,7 +70,7 @@ export const NewGoalPage = () => {
       description='모두 같은 시간 동안 공부해요. 시작하면 바꿀 수 없어요.'
       footer={
         <>
-          {create.isError && !shouldUseMock(create.error) && (
+          {create.isError && (
             <p role='alert' className='text-center text-caption-medium text-status-away'>
               {create.error.message}
             </p>

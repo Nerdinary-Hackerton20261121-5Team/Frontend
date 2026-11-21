@@ -2,11 +2,17 @@ import { useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { LoadingView } from '@/components/LoadingView';
 import { useCameraStore } from '@/features/attention/camera';
-import { useAssembly, useBoard, useEndSession, usePieceImages, usePlacePiece } from '../api';
+import {
+  useAssembly,
+  useBoard,
+  useEndSession,
+  usePieceImages,
+  usePlacePiece,
+  useStudyResult,
+} from '../api';
 import { AssemblyView } from '../components/AssemblyView';
 import { DoneView } from '../components/DoneView';
-import { useMockAssembly } from '../mock';
-import { gridFor, piecesOfRow, pieceTotal } from '../puzzle';
+import { gridFor, piecesOfRow } from '../puzzle';
 import { remoteId, useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
 
@@ -23,7 +29,6 @@ export const ResultPage = () => {
   const place = usePlacePiece();
   const endSession = useEndSession();
   const stopCamera = useCameraStore((state) => state.stop);
-  useMockAssembly();
 
   // 공부가 끝났으니 카메라를 끈다
   useEffect(() => {
@@ -53,6 +58,10 @@ export const ResultPage = () => {
           Object.entries(images.urls).map(([position, url]) => [Number(position) - 1, url]),
         )
       : undefined;
+  // 서버가 확정한 내 공부 시간. 받기 전에는 이 기기에서 센 값을 보여 준다
+  const result = useStudyResult(remote, session?.phase === 'assembly');
+  const myFocused = result.data?.members.find((member) => member.isMe)?.focusedSeconds;
+  const record = myFocused === undefined ? timeline : { ...timeline, focused: myFocused };
   const members = session?.members;
   const myName = members?.find((member) => member.isMe)?.name ?? '';
   const myPositions = session?.myPositions ?? null;
@@ -88,7 +97,7 @@ export const ResultPage = () => {
   const myPieces = myPositions
     ? myPositions.map((position) => position - 1)
     : piecesOfRow(myRow, grid);
-  const completed = assembly.data?.completed ?? placed.length === pieceTotal(grid);
+  const completed = assembly.data?.completed ?? false;
   // 아직 조각을 끼우지 않은 다른 사람. 이름을 아는 사람만 알린다
   const waitingPiece = assembly.data?.pieces.find((piece) => !piece.isMine && !piece.placed);
   const waitingName = waitingPiece
@@ -100,7 +109,7 @@ export const ResultPage = () => {
     pieceImages && images.cellAspect ? (images.cellAspect * grid.cols) / grid.rows : undefined;
 
   const onPlace = (index: number) => {
-    if (!remote) return placePiece(index, myName);
+    if (!remote) return;
     // 아직 놓지 않은 내 조각을 이 칸에 놓아 본다. 맞으면 화면에도 바로 끼운다
     const pieceIds = (assembly.data?.pieces ?? [])
       .filter((piece) => piece.isMine && !piece.placed)
@@ -116,7 +125,7 @@ export const ResultPage = () => {
       <DoneView
         session={session}
         grid={grid}
-        timeline={timeline}
+        timeline={record}
         pieceImages={pieceImages}
         padRatio={board.data?.padRatio}
         aspect={boardAspect}
@@ -138,7 +147,7 @@ export const ResultPage = () => {
     <AssemblyView
       session={session}
       grid={grid}
-      timeline={timeline}
+      timeline={record}
       placed={placed}
       myPieces={myPieces}
       pieceImages={pieceImages}
