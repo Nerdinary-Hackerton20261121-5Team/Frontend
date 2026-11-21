@@ -28,7 +28,7 @@ export const GoalPage = () => {
   const board = previewGrid(pieceTotal(grid));
   const myPieces = previewPieces(
     code,
-    pieceTotal(board),
+    board,
     grid.cols,
     session.members.findIndex((member) => member.isMe),
   );
@@ -48,13 +48,18 @@ export const GoalPage = () => {
       footer={<Button onClick={() => navigate(`/s/${code}/camera`)}>다음으로</Button>}
     >
       <div className='flex flex-col items-center gap-[10px]'>
-        <div className='overflow-hidden rounded-[8px]'>
+        <div className='relative overflow-hidden rounded-[8px]'>
           <JigsawBoard
             width={220}
             height={220}
             grid={board}
             look={(index) => (myPieces.includes(index) ? 'brand' : 'slot')}
             outlineClassName={() => 'stroke-brand-primary stroke-[1.5]'}
+          />
+          {/* 둥글게 잘린 판의 바깥 테두리를 다시 그려 모서리에서도 선이 끊기지 않게 한다 */}
+          <span
+            aria-hidden
+            className='pointer-events-none absolute inset-0 rounded-[8px] border-[1.5px] border-brand-primary'
           />
         </div>
         <p className='flex items-center gap-[6px] text-body-m-medium text-text-body'>
