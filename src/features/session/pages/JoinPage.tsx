@@ -72,7 +72,7 @@ export const JoinPage = () => {
     >
       <div className='flex flex-col gap-7'>
         <div className='flex h-[260px] flex-col items-center justify-center gap-[10px] rounded-[8px] bg-bg-field'>
-          <div className='overflow-hidden rounded-[9px]'>
+          <div className='relative overflow-hidden rounded-[9px]'>
             <JigsawBoard
               width={200}
               height={200}
@@ -81,6 +81,11 @@ export const JoinPage = () => {
               photoBlur={6}
               look={() => 'photo'}
               outlineClassName={() => 'stroke-white/60'}
+            />
+            {/* 둥글게 잘린 판의 바깥 테두리를 다시 그려 모서리에서도 선이 끊기지 않게 한다 */}
+            <span
+              aria-hidden
+              className='pointer-events-none absolute inset-0 rounded-[9px] border border-white/60'
             />
           </div>
           <p className='text-body-m-medium text-brand-strong'>
