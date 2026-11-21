@@ -4,16 +4,15 @@ import { Chip } from '@/shared/Chip';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { StepLayout } from '../components/StepLayout';
-import { MEMBER_COUNTS, PIECE_COUNTS } from '../limits';
+import { MEMBER_COUNTS } from '../limits';
 import { getPickedPhoto } from '../pickedPhoto';
 import { useSessionStore } from '../store';
 
-/** 02-2 인원과 퍼즐 조각 수 */
+/** 02-2 인원. 조각은 한 사람에 2개씩이라 인원이 정해지면 조각 수도 정해진다 */
 export const SizePage = () => {
   const navigate = useNavigate();
   const draft = useSessionStore((state) => state.draft);
   const setMemberCount = useSessionStore((state) => state.setMemberCount);
-  const setPieceCount = useSessionStore((state) => state.setPieceCount);
 
   if (!draft.photoUrl || !getPickedPhoto()) return <Navigate to='/new/photo' replace />;
 
@@ -24,7 +23,7 @@ export const SizePage = () => {
       step={2}
       title={
         <>
-          <Accent>몇 명이서</Accent>, 몇 조각으로 할까요?
+          <Accent>몇 명이서</Accent>, 조각을 맞출까요?
         </>
       }
       description='인원에 맞춰 조각을 나눠 맡아요.'
@@ -40,20 +39,6 @@ export const SizePage = () => {
                 onClick={() => setMemberCount(count)}
               >
                 {count}명
-              </Chip>
-            ))}
-          </div>
-        </Field>
-        <Field label='퍼즐 조각 수'>
-          <div className='flex gap-2'>
-            {PIECE_COUNTS.map((count) => (
-              <Chip
-                key={count}
-                selected={draft.pieceCount === count}
-                className='px-0'
-                onClick={() => setPieceCount(count)}
-              >
-                {count}조각
               </Chip>
             ))}
           </div>
