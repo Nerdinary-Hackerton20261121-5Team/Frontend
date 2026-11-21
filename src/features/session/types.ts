@@ -14,10 +14,15 @@ export type Member = {
 
 export type Phase = 'lobby' | 'study' | 'assembly';
 
+/** 서버에 만들어진 세션과 나를 가리키는 값. 서버 없이 흉내 낸 세션이면 없다 */
+export type Remote = { sessionId: number; token: string; isCreator: boolean };
+
 export type Session = {
   code: string;
+  remote: Remote | null;
+  /** 서버 세션에서 내가 몇 번째로 들어왔는지. 다른 사람을 번호로 부를 때 쓴다 */
+  mySeat: number;
   photoUrl: string;
-  filterId: string;
   /** 개설자가 정한 인원 */
   memberCount: number;
   /** 개설자가 고른 퍼즐 조각 수 */

@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Toast } from '@/shared/Toast';
-import { findFilter } from '../photoFilters';
 import { loosePadding, piecesOfRow, pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import { toMinutes, toPercent } from '../time';
@@ -48,7 +47,6 @@ export const AssemblyView = ({
     (member, row) =>
       !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
   );
-  const filter = findFilter(session.filterId);
 
   const boardHeight = Math.min(BOARD_HEIGHT, area.height);
   const boardWidth = (boardHeight * BOARD_WIDTH) / BOARD_HEIGHT;
@@ -115,7 +113,7 @@ export const AssemblyView = ({
         <p className='mt-3 text-body-m-medium text-text-secondary'>
           {remaining.length > 0
             ? `내 조각 ${remaining.length}개를 찾아 제자리에 끼워요`
-            : '모두 끼우면 사진과 필터가 공개돼요'}
+            : '모두 끼우면 사진이 공개돼요'}
         </p>
         <p className='mt-5 inline-flex items-center gap-[6px] rounded-full bg-bg-default py-[5px] pr-3 pl-2 text-caption-medium text-text-body shadow-[0_2px_10px_rgba(0,0,0,0.08)]'>
           <ProgressRing size={16} value={timeline.focused / (session.goalMinutes * 60)} />
@@ -136,7 +134,6 @@ export const AssemblyView = ({
             height={boardHeight}
             grid={grid}
             photoUrl={session.photoUrl}
-            filter={filter}
             look={(index) => (placed.includes(index) ? 'photo' : 'slot')}
             outlineClassName={(index) =>
               placed.includes(index) ? 'stroke-white/70' : 'stroke-brand-disabled stroke-[1.5]'
@@ -171,7 +168,6 @@ export const AssemblyView = ({
                   cellW={cellW}
                   cellH={cellH}
                   photoUrl={session.photoUrl}
-                  filter={filter}
                 />
               </div>
             );

@@ -1,5 +1,4 @@
 import { useId } from 'react';
-import type { PhotoFilter } from '../photoFilters';
 import { loosePadding, piecePath } from '../puzzle';
 import type { Grid } from '../puzzle';
 
@@ -9,11 +8,10 @@ interface LoosePieceProps {
   cellW: number;
   cellH: number;
   photoUrl: string;
-  filter?: PhotoFilter;
 }
 
 /** 판에 끼우기 전에 손으로 옮기는 조각 하나 */
-export const LoosePiece = ({ grid, index, cellW, cellH, photoUrl, filter }: LoosePieceProps) => {
+export const LoosePiece = ({ grid, index, cellW, cellH, photoUrl }: LoosePieceProps) => {
   const id = useId().replace(/:/g, '');
   const padding = loosePadding(cellW, cellH);
   const x0 = (index % grid.cols) * cellW;
@@ -34,11 +32,6 @@ export const LoosePiece = ({ grid, index, cellW, cellH, photoUrl, filter }: Loos
         <clipPath id={`${id}-shape`}>
           <path d={d} />
         </clipPath>
-        {filter && (
-          <filter id={`${id}-tone`}>
-            <feColorMatrix type={filter.type} values={String(filter.value)} />
-          </filter>
-        )}
       </defs>
       <g clipPath={`url(#${id}-shape)`}>
         <image
@@ -46,7 +39,6 @@ export const LoosePiece = ({ grid, index, cellW, cellH, photoUrl, filter }: Loos
           width={cellW * grid.cols}
           height={cellH * grid.rows}
           preserveAspectRatio='xMidYMid slice'
-          filter={filter ? `url(#${id}-tone)` : undefined}
         />
       </g>
       <path

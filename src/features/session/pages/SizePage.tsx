@@ -4,21 +4,16 @@ import { Chip } from '@/shared/Chip';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { StepLayout } from '../components/StepLayout';
+import { MEMBER_COUNTS, PIECE_COUNTS } from '../limits';
 import { useSessionStore } from '../store';
 
-const MEMBER_COUNTS = [4, 5, 6];
-const PIECE_COUNTS = [6, 12, 24];
-
-/** 02-2 인원과 퍼즐 조각 수. 정하면 세션이 만들어진다. */
+/** 02-2 인원과 퍼즐 조각 수 */
 export const SizePage = () => {
   const navigate = useNavigate();
   const draft = useSessionStore((state) => state.draft);
   const setSize = useSessionStore((state) => state.setSize);
-  const createSession = useSessionStore((state) => state.createSession);
 
   if (!draft.photoUrl) return <Navigate to='/new/photo' replace />;
-
-  const next = () => navigate(`/s/${createSession()}/invite`);
 
   return (
     <StepLayout
@@ -31,7 +26,7 @@ export const SizePage = () => {
         </>
       }
       description='인원에 맞춰 조각을 나눠 맡아요.'
-      footer={<Button onClick={next}>다음으로</Button>}
+      footer={<Button onClick={() => navigate('/new/goal')}>다음으로</Button>}
     >
       <div className='flex flex-col gap-7'>
         <Field label='인원'>

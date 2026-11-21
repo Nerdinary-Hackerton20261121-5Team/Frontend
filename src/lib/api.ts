@@ -35,14 +35,21 @@ const TIMEOUT_MS = 10_000
 const FALLBACK_MESSAGE = '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
 
 type Body = Record<string, unknown> | FormData
+/** 요청에 덧붙일 헤더. 참가자 토큰처럼 요청마다 다른 값을 넣을 때 쓴다 */
+type Headers = Record<string, string>
 
-async function request<T>(method: string, path: string, body?: Body): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: Body,
+  headers?: Headers,
+): Promise<T> {
   const isForm = body instanceof FormData
   let response: Response
   try {
     response = await fetch(BASE_URL + path, {
       method,
-      headers: body && !isForm ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}), ...headers },
       body: isForm ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -69,9 +76,12 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: Body) => request<T>('POST', path, body),
-  put: <T>(path: string, body?: Body) => request<T>('PUT', path, body),
-  patch: <T>(path: string, body?: Body) => request<T>('PATCH', path, body),
-  delete: <T = void>(path: string) => request<T>('DELETE', path),
+  get: <T>(path: string, headers?: Headers) => request<T>('GET', path, undefined, headers),
+  post: <T>(path: string, body?: Body, headers?: Headers) =>
+    request<T>('POST', path, body, headers),
+  put: <T>(path: string, body?: Body, headers?: Headers) => request<T>('PUT', path, body, headers),
+  patch: <T>(path: string, body?: Body, headers?: Headers) =>
+    request<T>('PATCH', path, body, headers),
+  delete: <T = void>(path: string, headers?: Headers) =>
+    request<T>('DELETE', path, undefined, headers),
 }
