@@ -8,7 +8,7 @@ import { InviteLinkField } from '../components/InviteLinkField';
 import { RenameSheet } from '../components/RenameSheet';
 import { StepLayout } from '../components/StepLayout';
 import { EARLY_START_MIN } from '../limits';
-import { useStartSession } from '../api';
+import { useStartSession, useSetNickname } from '../api';
 import { useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
 import { useSessionSync } from '../useSessionSync';
@@ -17,6 +17,7 @@ import { useSessionSync } from '../useSessionSync';
 export const LobbyPage = () => {
   const { code, session } = useCurrentSession();
   const rename = useSessionStore((state) => state.rename);
+  const setNickname = useSetNickname();
   const start = useSessionStore((state) => state.start);
   const startOnServer = useStartSession();
   const [renaming, setRenaming] = useState(false);
@@ -136,6 +137,7 @@ export const LobbyPage = () => {
           onClose={() => setRenaming(false)}
           onSave={(name) => {
             rename(name);
+            if (session.remote) setNickname.mutate({ remote: session.remote, nickname: name });
             setRenaming(false);
           }}
         />

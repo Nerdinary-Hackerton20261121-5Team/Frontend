@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router';
 import { LoadingView } from '@/components/LoadingView';
 import { Button } from '@/shared/Button';
 import { Input } from '@/shared/Input';
-import { leaveSession, shouldUseMock, useJoinSession } from '../api';
+import { leaveSession, shouldUseMock, useJoinSession, useSetNickname } from '../api';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { JigsawBoard } from '../components/JigsawBoard';
@@ -22,6 +22,7 @@ export const JoinPage = () => {
   const { code, session } = useCurrentSession();
   const openAsGuest = useSessionStore((state) => state.openAsGuest);
   const rename = useSessionStore((state) => state.rename);
+  const setNickname = useSetNickname();
   const reset = useSessionStore((state) => state.reset);
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -86,6 +87,7 @@ export const JoinPage = () => {
 
   const next = () => {
     rename(trimmed);
+    if (session.remote) setNickname.mutate({ remote: session.remote, nickname: trimmed });
     navigate(`/s/${code}/goal`);
   };
 
