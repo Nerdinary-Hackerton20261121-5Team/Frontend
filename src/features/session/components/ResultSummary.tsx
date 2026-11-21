@@ -16,7 +16,6 @@ export const ResultSummary = ({ timeline, goalMinutes, ending, onHome }: ResultS
       label: '화면에 둔 시간',
       value: `${toMinutes(timeline.focused)}분 / ${goalMinutes}분 · ${toPercent(timeline.focused / (goalMinutes * 60))}%`,
     },
-    { label: '화면 밖', value: `${toMinutes(timeline.hidden)}분` },
     { label: '자리 비움', value: `${toMinutes(timeline.away)}분` },
     { label: '직접 일시정지', value: `${toMinutes(timeline.paused)}분` },
   ];

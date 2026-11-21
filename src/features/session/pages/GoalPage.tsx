@@ -25,7 +25,7 @@ export const GoalPage = () => {
           오늘 <Accent>목표 시간</Accent>이에요
         </>
       }
-      description={`${session.memberCount}명이 모두 들어오면 공부를 시작할 수 있어요.`}
+      description='모두 같은 시간 동안 공부해요. 시작하면 바꿀 수 없어요.'
       footer={<Button onClick={() => navigate(`/s/${code}/camera`)}>다음으로</Button>}
     >
       <GoalPreview
