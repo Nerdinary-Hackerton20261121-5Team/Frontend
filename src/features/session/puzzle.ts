@@ -75,3 +75,26 @@ export const piecePath = (grid: Grid, index: number, cellW: number, cellH: numbe
     'Z',
   ].join(' ');
 };
+
+/**
+ * 서버 세션에서 조각마다 맡은 사람 번호를 만든다. 서버는 내 조각의 칸만 알려 주므로,
+ * 내 칸에는 나를 넣고 나머지 칸은 다른 사람을 perPerson 개씩 차례로 채운다.
+ */
+export const ownersFromServer = (
+  total: number,
+  myPositions: number[],
+  myIndex: number,
+  people: number,
+  perPerson: number,
+) => {
+  const others = Array.from({ length: people }, (_, index) => index).filter(
+    (index) => index !== myIndex,
+  );
+  let filled = 0;
+  return Array.from({ length: total }, (_, index) => {
+    if (myPositions.includes(index + 1)) return myIndex;
+    const owner = others[Math.floor(filled / perPerson)] ?? others[others.length - 1] ?? myIndex;
+    filled += 1;
+    return owner;
+  });
+};
