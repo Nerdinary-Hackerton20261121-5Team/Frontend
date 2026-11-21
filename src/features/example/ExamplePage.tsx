@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Avatar } from '@/shared/Avatar';
 import { Button } from '@/shared/Button';
 import { Header } from '@/shared/Header';
 
@@ -29,6 +30,14 @@ export const ExamplePage = () => {
           <p className='text-caption-regular text-text-secondary'>
             뒤로가기 누른 횟수 {clicks.back ?? 0}
           </p>
+        </section>
+
+        <section className='flex flex-col gap-3'>
+          <h2 className='text-title-m text-text-primary'>Avatar</h2>
+          <div className='flex gap-4'>
+            <Avatar name='비둘기' />
+            <Avatar name='비둘기' state='waiting' />
+          </div>
         </section>
 
         <section className='flex flex-col gap-3'>
