@@ -1,9 +1,10 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Toast } from '@/shared/Toast';
 import { pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import type { Session, Timeline } from '../types';
 import { useElementSize } from '../useElementSize';
+import { DoneActions } from './DoneActions';
 import { JigsawBoard } from './JigsawBoard';
 import { PieceImages } from './PieceImages';
 import { ResultSummary } from './ResultSummary';
@@ -22,7 +23,7 @@ interface DoneViewProps {
   onHome: () => void;
 }
 
-/** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 준다. */
+/** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 주고, "내 기록" 을 누르면 요약이 올라온다. */
 export const DoneView = ({
   session,
   grid,
@@ -35,6 +36,7 @@ export const DoneView = ({
 }: DoneViewProps) => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const size = useElementSize(frameRef);
+  const [recordOpen, setRecordOpen] = useState(false);
   // 서버 조각은 사진 비율을 지킨 채 화면을 가득 덮게 키우고, 넘치는 부분은 가운데를 맞춰 자른다
   const boardWidth = aspect ? Math.max(size.width, size.height * aspect) : size.width;
   const boardHeight = aspect ? boardWidth / aspect : size.height;
@@ -77,12 +79,17 @@ export const DoneView = ({
       >
         완성! 사진이 공개됐어요
       </Toast>
-      <ResultSummary
-        timeline={timeline}
-        goalMinutes={session.goalMinutes}
-        ending={ending}
-        onHome={onHome}
-      />
+      {recordOpen ? (
+        <ResultSummary
+          timeline={timeline}
+          goalMinutes={session.goalMinutes}
+          ending={ending}
+          onHome={onHome}
+          onClose={() => setRecordOpen(false)}
+        />
+      ) : (
+        <DoneActions ending={ending} onHome={onHome} onOpenRecord={() => setRecordOpen(true)} />
+      )}
     </div>
   );
 };

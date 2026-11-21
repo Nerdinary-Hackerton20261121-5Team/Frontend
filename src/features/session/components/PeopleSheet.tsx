@@ -1,4 +1,5 @@
 import { BottomSheet } from '@/shared/BottomSheet';
+import { Button } from '@/shared/Button';
 import { StatusChip } from '@/shared/StatusChip';
 import type { Member } from '../types';
 import { SheetActions } from './SheetActions';
@@ -8,10 +9,11 @@ interface PeopleSheetProps {
   goalMinutes: number;
   onClose: () => void;
   onPause: () => void;
-  onFinish: () => void;
+  /** 모두의 공부를 끝낸다. 만든 사람에게만 준다 */
+  onFinish?: () => void;
 }
 
-/** 07 함께하는 사람. 각자 지금 기록 중인지 보여 주고, 여기서 일시정지하거나 끝낸다. */
+/** 07 함께하는 사람. 각자 지금 기록 중인지 보여 주고, 여기서 일시정지한다. 만든 사람은 모두의 공부를 끝낼 수도 있다. */
 export const PeopleSheet = ({
   members,
   goalMinutes,
@@ -37,12 +39,18 @@ export const PeopleSheet = ({
           )}
         </div>
       ))}
-      <SheetActions
-        cancelLabel='일시정지'
-        confirmLabel='종료'
-        onCancel={onPause}
-        onConfirm={onFinish}
-      />
+      {onFinish ? (
+        <SheetActions
+          cancelLabel='일시정지'
+          confirmLabel='종료'
+          onCancel={onPause}
+          onConfirm={onFinish}
+        />
+      ) : (
+        <Button variant='secondary' onClick={onPause}>
+          일시정지
+        </Button>
+      )}
     </BottomSheet>
   );
 };
