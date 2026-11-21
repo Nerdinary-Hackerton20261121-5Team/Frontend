@@ -3,7 +3,6 @@ import type { Grid } from '../puzzle';
 import type { Member } from '../types';
 import { CellRing } from './CellRing';
 import { MyPieceLabel } from './MyPieceLabel';
-import { PieceFill } from './PieceFill';
 
 interface StudyBoardProps {
   width: number;
@@ -13,10 +12,11 @@ interface StudyBoardProps {
   owners: number[];
   members: Member[];
   photoUrl: string | null;
-  /** 서버가 오려 준 조각 그림(칸 번호별). 있으면 사진 대신 칸마다 이 그림을 보여 준다 */
-  pieceImages?: Record<number, string>;
-  /** 조각 그림이 칸보다 사방으로 얼마나 큰지(칸 크기에 대한 비율) */
-  padRatio?: number;
+  /**
+   * 칸마다 사진의 어느 칸을 보여 줄지(왼쪽 위부터 0). 서버가 정답 칸이 드러나지 않게 섞어 준 순서다.
+   * 없으면 사진을 제자리 그대로 보여 준다
+   */
+  sources?: number[];
   /** 내 조각을 얼마나 흐리게 할지(px). 시간을 채울수록 0 에 가까워진다 */
   myBlur: number;
   away: boolean;
@@ -26,8 +26,6 @@ interface StudyBoardProps {
 
 // 칸 안쪽으로 고리와 이름표를 띄우는 거리
 const INSET = 10;
-// 남의 조각에 더하는 흐림(px). 서버가 흐리게 준 그림의 홈 자국까지 부드럽게 뭉갠다
-const OTHERS_BLUR = 6;
 // 내 조각 테두리 두께(px). 사진 위에서도 잘 보이게 굵게 둔다
 const BORDER = 3;
 
@@ -39,8 +37,7 @@ export const StudyBoard = ({
   owners,
   members,
   photoUrl,
-  pieceImages,
-  padRatio = 0.2,
+  sources,
   myBlur,
   away,
   radius,
@@ -57,6 +54,11 @@ export const StudyBoard = ({
     y: Math.floor(index / grid.cols) * cellH,
   }));
   const mine = cells.filter((cell) => cell.owner === myIndex);
+  // 이 칸에 보여 줄 사진 부분의 왼쪽 위 좌표
+  const sourceOf = (index: number) => {
+    const source = sources?.[index] ?? index;
+    return { x: (source % grid.cols) * cellW, y: Math.floor(source / grid.cols) * cellH };
+  };
 
   // 판의 네 모서리에 놓인 칸은 카드처럼 그 모서리만 둥글게 해서 테두리가 잘리지 않게 한다
   const cornerRadius = (index: number) => {
@@ -76,26 +78,37 @@ export const StudyBoard = ({
 
   return (
     <div className='absolute inset-0'>
-      {pieceImages
-        ? // 남의 조각은 서버가 그 사람이 채운 만큼만 선명하게 준다
+      {photoUrl &&
+        (sources ? (
+          // 다른 사람의 조각. 공부하는 동안에는 어떤 그림인지 알아볼 수 없게 흐리게만 보여 준다
           cells
-            .filter((cell) => cell.owner !== myIndex && pieceImages[cell.index])
+            .filter((cell) => cell.owner !== myIndex)
             .map((cell) => (
               <div
                 key={cell.index}
                 style={{ left: cell.x, top: cell.y, width: cellW, height: cellH }}
-                className='absolute overflow-hidden brightness-75'
+                className='absolute overflow-hidden'
               >
-                <PieceFill src={pieceImages[cell.index]} padRatio={padRatio} blur={OTHERS_BLUR} />
+                <img
+                  src={photoUrl}
+                  alt=''
+                  style={{
+                    width,
+                    height,
+                    left: -sourceOf(cell.index).x,
+                    top: -sourceOf(cell.index).y,
+                  }}
+                  className='absolute max-w-none object-cover blur-[10px] brightness-75'
+                />
               </div>
             ))
-        : photoUrl && (
-            <img
-              src={photoUrl}
-              alt=''
-              className='absolute inset-0 size-full object-cover blur-[10px] brightness-75'
-            />
-          )}
+        ) : (
+          <img
+            src={photoUrl}
+            alt=''
+            className='absolute inset-0 size-full object-cover blur-[10px] brightness-75'
+          />
+        ))}
 
       {mine.map((cell) => (
         <div
@@ -112,24 +125,20 @@ export const StudyBoard = ({
             away ? 'border-status-away' : 'border-brand-primary',
           )}
         >
-          {pieceImages?.[cell.index] ? (
-            <PieceFill src={pieceImages[cell.index]} padRatio={padRatio} blur={myBlur} />
-          ) : (
-            photoUrl && (
-              // 판 전체 크기의 사진을 칸 위치만큼 옮겨, 흐린 배경과 같은 자리가 선명하게 보이게 한다
-              <img
-                src={photoUrl}
-                alt=''
-                style={{
-                  width,
-                  height,
-                  left: -cell.x - BORDER,
-                  top: -cell.y - BORDER,
-                  filter: myBlur > 0 ? `blur(${myBlur}px)` : undefined,
-                }}
-                className='absolute max-w-none object-cover'
-              />
-            )
+          {photoUrl && (
+            // 판 전체 크기의 사진을 옮겨 이 칸에 해당하는 부분만 보이게 한다
+            <img
+              src={photoUrl}
+              alt=''
+              style={{
+                width,
+                height,
+                left: -sourceOf(cell.index).x - BORDER,
+                top: -sourceOf(cell.index).y - BORDER,
+                filter: myBlur > 0 ? `blur(${myBlur}px)` : undefined,
+              }}
+              className='absolute max-w-none object-cover'
+            />
           )}
         </div>
       ))}

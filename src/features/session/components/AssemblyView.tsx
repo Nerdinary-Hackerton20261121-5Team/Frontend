@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Toast } from '@/shared/Toast';
+import { MY_BLUR_RATIO } from '../limits';
 import { loosePadding, piecesOfRow, pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import { toMinutes, toPercent } from '../time';
@@ -10,6 +11,7 @@ import { Accent } from './Accent';
 import { Confetti } from './Confetti';
 import { JigsawBoard } from './JigsawBoard';
 import { LoosePiece } from './LoosePiece';
+import { PieceBlurFilter } from './PieceBlurFilter';
 import { PieceImages } from './PieceImages';
 import { ProgressRing } from './ProgressRing';
 
@@ -36,6 +38,8 @@ interface AssemblyViewProps {
   padRatio?: number;
   /** 판의 가로세로 비율(가로 ÷ 세로). 서버 조각은 사진 비율을 그대로 따른다 */
   aspect?: number;
+  /** 내가 채운 정도. 0 에서 1. 내 조각은 이만큼만 선명하게 보인다 */
+  myRestoration?: number;
   onPlace: (index: number) => void;
 }
 
@@ -51,6 +55,7 @@ export const AssemblyView = ({
   pieceImages,
   padRatio = 0.2,
   aspect = BOARD_WIDTH / BOARD_HEIGHT,
+  myRestoration = 1,
   onPlace,
 }: AssemblyViewProps) => {
   const areaRef = useRef<HTMLDivElement | null>(null);
@@ -78,6 +83,9 @@ export const AssemblyView = ({
   // 조각 둘레의 여백. 서버 그림은 칸의 일정 비율만큼 크고, 직접 그릴 때는 돌기 크기만큼 둔다
   const padX = pieceImages ? cellW * padRatio : loosePadding(cellW, cellH);
   const padY = pieceImages ? cellH * padRatio : loosePadding(cellW, cellH);
+
+  const myBlur = (1 - myRestoration) * cellW * MY_BLUR_RATIO;
+  const myFilter = pieceImages && myBlur > 0.5 ? 'url(#assembly-my-blur)' : undefined;
 
   // 아직 끼우지 않은 내 조각은 판의 왼쪽과 오른쪽에 번갈아 놓아 둔다
   const homeOf = (index: number) => {
@@ -122,6 +130,7 @@ export const AssemblyView = ({
   return (
     <main className='relative flex min-h-0 flex-1 flex-col overflow-hidden bg-linear-to-b from-brand-subtle to-bg-default to-45%'>
       <Confetti />
+      {myFilter && <PieceBlurFilter id='assembly-my-blur' radius={myBlur} />}
       <div className='shrink-0 px-5 pt-[calc(50px+env(safe-area-inset-top))] text-center'>
         <h1 className='text-title-l text-text-primary'>
           {placed.length === 0 ? (
@@ -163,12 +172,19 @@ export const AssemblyView = ({
             photoUrl={session.photoUrl}
             edges={pieceImages ? () => FLAT : undefined}
             look={(index) =>
-              !placed.includes(index) ? 'slot' : pieceImages?.[index] ? 'none' : 'photo'
+              !placed.includes(index)
+                ? 'slot'
+                : !pieceImages
+                  ? 'photo'
+                  : pieceImages[index]
+                    ? 'none'
+                    : 'slot'
             }
             outlineClassName={(index) =>
-              !placed.includes(index)
+              // 끼웠어도 그림을 아직 받지 못한 조각은 빈 칸처럼 둔다
+              !placed.includes(index) || (pieceImages && !pieceImages[index])
                 ? 'stroke-brand-disabled stroke-[1.5]'
-                : pieceImages?.[index]
+                : pieceImages
                   ? 'stroke-transparent'
                   : 'stroke-white/70'
             }
@@ -182,6 +198,8 @@ export const AssemblyView = ({
               images={pieceImages}
               indexes={placed}
               padRatio={padRatio}
+              filtered={myPieces}
+              filter={myFilter}
             />
           )}
         </div>
@@ -212,8 +230,12 @@ export const AssemblyView = ({
                     src={pieceImages[index]}
                     alt=''
                     draggable={false}
-                    className='block max-w-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.18)]'
-                    style={{ width: cellW + padX * 2, height: cellH + padY * 2 }}
+                    className='block max-w-none'
+                    style={{
+                      width: cellW + padX * 2,
+                      height: cellH + padY * 2,
+                      filter: `${myFilter ?? ''} drop-shadow(0 6px 10px rgba(0,0,0,0.18))`,
+                    }}
                   />
                 ) : (
                   <LoosePiece

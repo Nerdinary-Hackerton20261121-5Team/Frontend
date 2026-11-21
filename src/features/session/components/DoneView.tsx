@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import { Toast } from '@/shared/Toast';
+import { MY_BLUR_RATIO } from '../limits';
 import { pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import type { Session, Timeline } from '../types';
 import { useElementSize } from '../useElementSize';
 import { DoneActions } from './DoneActions';
+import { PieceBlurFilter } from './PieceBlurFilter';
 import { JigsawBoard } from './JigsawBoard';
 import { PieceImages } from './PieceImages';
 import { ResultSummary } from './ResultSummary';
@@ -18,6 +20,9 @@ interface DoneViewProps {
   padRatio?: number;
   /** 판의 가로세로 비율(가로 ÷ 세로) */
   aspect?: number;
+  /** 내 조각 번호와 내가 채운 정도(0 에서 1). 내 조각은 이만큼만 선명하게 보인다 */
+  myPieces?: number[];
+  myRestoration?: number;
   /** 방을 정리하는 중인지 */
   ending: boolean;
   onHome: () => void;
@@ -31,6 +36,8 @@ export const DoneView = ({
   pieceImages,
   padRatio = 0.2,
   aspect,
+  myPieces,
+  myRestoration = 1,
   ending,
   onHome,
 }: DoneViewProps) => {
@@ -40,9 +47,12 @@ export const DoneView = ({
   // 서버 조각은 사진 비율을 지킨 채 화면을 가득 덮게 키우고, 넘치는 부분은 가운데를 맞춰 자른다
   const boardWidth = aspect ? Math.max(size.width, size.height * aspect) : size.width;
   const boardHeight = aspect ? boardWidth / aspect : size.height;
+  const myBlur = (1 - myRestoration) * (boardWidth / grid.cols) * MY_BLUR_RATIO;
+  const myFilter = pieceImages && myBlur > 0.5 ? 'url(#done-my-blur)' : undefined;
 
   return (
     <div ref={frameRef} className='relative min-h-0 flex-1 overflow-hidden bg-bg-inverse'>
+      {myFilter && <PieceBlurFilter id='done-my-blur' radius={myBlur} />}
       {pieceImages ? (
         <div
           className='absolute'
@@ -60,6 +70,8 @@ export const DoneView = ({
             images={pieceImages}
             indexes={Array.from({ length: pieceTotal(grid) }, (_, index) => index)}
             padRatio={padRatio}
+            filtered={myPieces}
+            filter={myFilter}
           />
         </div>
       ) : (
