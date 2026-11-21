@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Toast } from '@/shared/Toast';
 import { MY_BLUR_RATIO } from '../limits';
-import { loosePadding, piecesOfRow, pieceTotal } from '../puzzle';
+import { loosePadding, pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import { toMinutes, toPercent } from '../time';
 import type { Session, Timeline } from '../types';
@@ -30,7 +30,7 @@ interface AssemblyViewProps {
   myPieces: number[];
   /** 마지막으로 조각을 끼운 사람. 누군지 모르면 빈 문자열 */
   lastPlacedBy: string | null;
-  /** 서버 세션에서 아직 조각을 끼우지 않은 다른 사람의 이름 */
+  /** 아직 조각을 끼우지 않은 다른 사람의 이름 */
   waitingName?: string;
   /** 서버가 오려 준 조각 그림(조각 번호별). 있으면 이것으로 그리고, 없으면 사진을 직접 잘라 그린다 */
   pieceImages?: Record<number, string>;
@@ -66,14 +66,6 @@ export const AssemblyView = ({
   const total = pieceTotal(grid);
   const myRow = session.members.findIndex((member) => member.isMe);
   const remaining = myPieces.filter((index) => !placed.includes(index));
-  // 서버 세션은 서버가 알려 준 주인으로, 흉내 낸 세션은 줄 단위로 맡은 사람을 찾는다
-  const waiting = session.remote
-    ? waitingName
-    : session.members.find(
-        (member, row) =>
-          !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
-      )?.name;
-
   // 판은 Figma 크기 안에서 비율을 지키며 가장 크게 둔다
   const boardHeight = Math.min(BOARD_HEIGHT, area.height, BOARD_WIDTH / aspect);
   const boardWidth = boardHeight * aspect;
@@ -256,8 +248,8 @@ export const AssemblyView = ({
         <span className='text-body-m-medium text-text-primary'>
           {placed.length} / {total}
         </span>
-        {waiting && placed.length > 0
-          ? `${waiting}님 조각을 기다리는 중`
+        {waitingName && placed.length > 0
+          ? `${waitingName}님 조각을 기다리는 중`
           : remaining.length === 0 && placed.length > 0
             ? '다른 사람의 조각을 기다리는 중'
             : `${session.members.length}명이 함께 맞추는 중`}

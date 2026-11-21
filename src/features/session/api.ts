@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
 import type { Remote } from './types';
 
 /** 서버가 저장한 사진. url 은 화면에 쓸 수 있게 크기를 줄인 주소다 */
@@ -96,14 +96,10 @@ export type Board = {
   pieces: BoardPiece[];
 };
 
-const withToken = (remote: Remote) => ({ headers: { 'X-Participant-Token': remote.token } });
+/** heartbeat 를 보내는 가장 짧은 간격(초) */
+const HEARTBEAT_MIN_SECONDS = 3;
 
-/**
- * TODO(mock): 세션 API 가 아직 배포되지 않은 서버이거나 서버에 닿지 못한 경우다.
- * 이때는 프론트에서 흉내 낸 세션으로 이어 간다. 세션 API 가 운영에 올라가면 이 함수와 쓰는 곳을 지운다.
- */
-export const shouldUseMock = (error: unknown) =>
-  error instanceof ApiError && (error.status === 0 || error.code === 'NOT_FOUND');
+const withToken = (remote: Remote) => ({ headers: { 'X-Participant-Token': remote.token } });
 
 /**
  * 방을 만들고 고른 사진을 방의 사진으로 올린다.
@@ -140,7 +136,6 @@ export const useCreateSession = () => {
         return { entry, photoUrl: image.url };
       } catch {
         // 방은 만들어졌다. 다시 누르면 같은 요청 ID 라 그 방을 돌려받고 사진만 다시 올린다.
-        // ApiError 로 던지면 서버가 없는 경우로 읽혀 흉내 낸 세션으로 넘어가므로 일반 오류로 던진다
         throw new Error('사진을 올리지 못했어요. 다시 시도하거나 다른 사진을 골라 주세요.');
       }
     },
@@ -231,7 +226,12 @@ export const useHeartbeat = (remote: Remote | null, enabled: boolean, state: Pre
       );
     },
     enabled: remote !== null && enabled,
-    refetchInterval: 10_000,
+    // 서버가 권하는 주기를 따르되 3초보다 자주 보내지는 않는다. 쌓이는 시간은 주기와 상관없이 서버 시각으로 잰다
+    refetchInterval: (query) =>
+      Math.max(
+        query.state.data?.heartbeatIntervalSeconds ?? HEARTBEAT_MIN_SECONDS,
+        HEARTBEAT_MIN_SECONDS,
+      ) * 1000,
     refetchIntervalInBackground: true,
     // 상태가 바뀌어 다시 보내는 동안에도 직전 응답(서버의 단계)을 들고 있는다
     placeholderData: keepPreviousData,
@@ -262,7 +262,8 @@ export const useBoard = (remote: Remote | null, enabled: boolean) => {
       return api.get<Board>(`/api/sessions/${remote.sessionId}/board`, withToken(remote));
     },
     enabled: remote !== null && enabled,
-    refetchInterval: 10_000,
+    // 함께 하는 사람의 상태가 늦지 않게 보이도록 자주 읽는다. 가벼운 조회다
+    refetchInterval: 3000,
   });
 };
 
@@ -438,4 +439,36 @@ export const usePieceImages = (
     /** 내 조각을 하나도 받지 못했다. 이때는 사진을 직접 잘라 그린다 */
     failed: mineSettled && myResults.every((result) => result.isError),
   };
+};
+
+/** 공부가 끝난 뒤 서버가 확정한 참가자별 결과 */
+export type StudyResult = {
+  goalSeconds: number;
+  /** 팀 평균 복원도. 0 에서 1 */
+  averageRestoration: number;
+  members: {
+    participantId: number;
+    nickname: string | null;
+    isMe: boolean;
+    /** 얼굴이 보인 시간의 합(초) */
+    focusedSeconds: number;
+    unfocusedSeconds: number;
+    restoration: number;
+    /** 공부가 끝날 때 연결이 끊겨 있었는지 */
+    absent: boolean;
+  }[];
+};
+
+/** 공부 결과를 읽는다. 공부가 끝난 뒤에만 열린다 */
+export const useStudyResult = (remote: Remote | null, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['session-result', remote?.sessionId],
+    queryFn: () => {
+      if (!remote) throw new Error('세션에 들어가 있지 않아요');
+      return api.get<StudyResult>(`/api/sessions/${remote.sessionId}/result`, withToken(remote));
+    },
+    enabled: remote !== null && enabled,
+    // 공부가 끝나면 값이 바뀌지 않는다
+    staleTime: Infinity,
+  });
 };

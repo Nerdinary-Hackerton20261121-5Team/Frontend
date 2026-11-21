@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Navigate } from 'react-router';
 import { Button } from '@/shared/Button';
 import { MemberRow } from '@/shared/MemberRow';
@@ -26,27 +26,14 @@ export const LobbyPage = () => {
   const me = session?.members.find((member) => member.isMe);
   const joined = session?.members.filter((member) => member.joined).length ?? 0;
   const full = session !== null && joined === session.memberCount;
-  const guestWaiting =
-    session?.phase === 'lobby' && !session.remote && me !== undefined && !me.isHost && full;
-
-  // TODO(mock): 서버 없이 흉내 낸 세션의 참가자는 개설자가 시작한 것처럼 잠시 뒤 넘어간다.
-  // 서버 세션에서는 useSessionSync 가 단계 변화를 읽어 넘긴다
-  useEffect(() => {
-    if (!guestWaiting) return;
-    const timer = window.setTimeout(start, 1500);
-    return () => window.clearTimeout(timer);
-  }, [guestWaiting, start]);
 
   if (!session || !me) return <Navigate to={`/s/${code}`} replace />;
   // 방이 끝났거나 내 자리가 없어졌으면 더 기다릴 수 없다
   if (gone) return <Navigate to={`/s/${code}/closed`} replace />;
   if (session.phase !== 'lobby') return <Navigate to={`/s/${code}/study`} replace />;
 
-  // 서버 세션이면 서버에서 먼저 시작하고, 성공하면 화면을 넘긴다
-  const begin = () => {
-    if (!session.remote) return start();
-    startOnServer.mutate(session.remote, { onSuccess: start });
-  };
+  // 서버에서 먼저 시작하고, 성공하면 화면을 넘긴다. 다른 사람은 세션 조회로 시작을 알아채 따라 넘어온다
+  const begin = () => startOnServer.mutate(session.remote, { onSuccess: start });
 
   return (
     <StepLayout
@@ -137,7 +124,7 @@ export const LobbyPage = () => {
           onClose={() => setRenaming(false)}
           onSave={(name) => {
             rename(name);
-            if (session.remote) setNickname.mutate({ remote: session.remote, nickname: name });
+            setNickname.mutate({ remote: session.remote, nickname: name });
             setRenaming(false);
           }}
         />

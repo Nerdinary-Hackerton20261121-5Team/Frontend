@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { ApiError } from '@/lib/api';
-import { shouldUseMock, useSessionDetail } from './api';
-import { useMockJoins } from './mock';
+import { useSessionDetail } from './api';
 import { useSessionStore } from './store';
 
 /**
@@ -17,13 +16,7 @@ export const useSessionSync = () => {
     if (detail.data) syncRemote(detail.data);
   }, [detail.data, syncRemote]);
 
-  // TODO(mock): 서버 없이 흉내 낸 세션에서는 사람이 하나씩 들어오게 한다
-  useMockJoins();
-
   // 토큰이 더는 통하지 않거나(401, 403) 세션이 지워진(404) 경우다
-  const gone =
-    detail.error instanceof ApiError &&
-    [401, 403, 404].includes(detail.error.status) &&
-    !shouldUseMock(detail.error);
+  const gone = detail.error instanceof ApiError && [401, 403, 404].includes(detail.error.status);
   return { gone };
 };

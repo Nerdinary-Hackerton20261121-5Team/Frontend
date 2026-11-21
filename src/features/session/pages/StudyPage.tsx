@@ -15,7 +15,6 @@ import { MY_BLUR_RATIO } from '../limits';
 import { gridFor, ownersFromServer, pieceTotal } from '../puzzle';
 import { useSessionStore } from '../store';
 import { studyGrid } from '../studyLayout';
-import { SPEED } from '../time';
 import type { TickMode } from '../types';
 import { useCurrentSession } from '../useCurrentSession';
 import { useElementSize } from '../useElementSize';
@@ -94,7 +93,7 @@ export const StudyPage = () => {
   }, [mode]);
   useEffect(() => {
     if (!studying) return;
-    const timer = window.setInterval(() => tick(SPEED, modeRef.current), 1000);
+    const timer = window.setInterval(() => tick(1, modeRef.current), 1000);
     return () => window.clearInterval(timer);
   }, [studying, tick]);
 
@@ -118,13 +117,10 @@ export const StudyPage = () => {
   const me = session.members[myIndex];
   // 공부를 끝내는 것은 만든 사람만 한다. 서버에서 모두의 공부가 끝나고, 다른 사람은 heartbeat 로 알아채 따라 넘어온다.
   // 참가자가 혼자 넘어가면 서버는 아직 공부 중이라 조각을 끼울 수 없다
-  const canFinish = !session.remote || session.remote.isCreator;
-  const finish = () => {
-    if (!session.remote?.isCreator) return finishStudy();
-    endFocus.mutate(session.remote, { onSettled: finishStudy });
-  };
+  const canFinish = session.remote.isCreator;
+  const finish = () => endFocus.mutate(session.remote, { onSettled: finishStudy });
   // 서버가 섞어 준 칸을 알기 전에 그리면 정답 칸이 잠깐 드러난다. 진행판을 받은 뒤에 그린다
-  const loadingBoard = session.remote !== null && board.isPending;
+  const loadingBoard = board.isPending;
   const showAway = away && !paused;
 
   return (

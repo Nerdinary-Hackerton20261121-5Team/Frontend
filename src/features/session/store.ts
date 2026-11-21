@@ -2,12 +2,10 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { BoardMember, BoardPiece, SessionDetail, SessionEntry } from './api';
 import { HOST_NAME, PIECES_PER_PERSON } from './limits';
-import { MOCK_INVITE, mockPhoto } from './mockData';
 import type { Member, Session, TickMode, Timeline } from './types';
 
 // 세션을 만드는 동안 고른 값과, 들어가 있는 세션의 상태를 한곳에서 들고 있는다.
 // 새로고침해도 이어지도록 탭이 열려 있는 동안 sessionStorage 에 남긴다.
-// TODO(mock): 서버가 주지 않는 값(다른 사람의 이름과 진행 상황, 조립)은 아직 여기서 흉내 낸다.
 
 type Draft = {
   photoUrl: string | null;
@@ -47,12 +45,15 @@ const emptySeats = (from: number, to: number) =>
 /** 서버 참가자 번호로 만든 명단 id */
 export const remoteId = (participantId: number) => `p-${participantId}`;
 
-const randomCode = () => Math.random().toString(36).slice(2, 6);
+/** 방의 사진을 받아 오기 전에 잠깐 보이는 빈 그림 */
+const BLANK_PHOTO =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='4'%3E%3Crect width='3' height='4' fill='%23d9eee0'/%3E%3C/svg%3E";
 
-const remoteOf = (entry: SessionEntry | null) =>
-  entry
-    ? { sessionId: entry.sessionId, token: entry.participantToken, isCreator: entry.isCreator }
-    : null;
+const remoteOf = (entry: SessionEntry) => ({
+  sessionId: entry.sessionId,
+  token: entry.participantToken,
+  isCreator: entry.isCreator,
+});
 
 interface SessionStore {
   draft: Draft;
@@ -67,10 +68,10 @@ interface SessionStore {
   setPhoto: (photoUrl: string | null) => void;
   setMemberCount: (memberCount: number) => void;
   setDraftGoal: (minutes: number) => void;
-  /** 고른 값으로 세션을 열고 초대 코드를 돌려준다. entry 가 없으면 서버 없이 흉내 낸 세션이다 */
-  openAsHost: (entry: SessionEntry | null, photoUrl?: string | null) => string;
+  /** 서버에 만든 방으로 세션을 열고 초대 코드를 돌려준다 */
+  openAsHost: (entry: SessionEntry, photoUrl: string | null) => string;
   /** 초대 링크로 들어온 사람의 세션을 연다. 이름은 rename 으로 나중에 정한다 */
-  openAsGuest: (code: string, entry: SessionEntry | null) => void;
+  openAsGuest: (code: string, entry: SessionEntry) => void;
   /** 서버에서 읽은 인원, 목표 시간, 단계를 반영한다 */
   syncRemote: (detail: SessionDetail) => void;
   /** 서버 진행판의 자리 순서와 공개된 복원도를 반영한다 */
@@ -80,7 +81,6 @@ interface SessionStore {
   /** 서버 조립판에서 제자리에 놓인 조각을 반영한다 */
   syncAssembly: (placedIndexes: number[], ownerName: (index: number) => string) => void;
   rename: (name: string) => void;
-  addMember: (name: string) => void;
   /** 지금 들어온 사람으로 명단을 굳히고 공부를 시작한다 */
   start: () => void;
   /** 시간을 seconds 만큼 흘려보낸다. mode 에 따라 어디에 쌓일지가 달라진다 */
@@ -136,7 +136,7 @@ export const useSessionStore = create<SessionStore>()(
 
       openAsHost: (entry, photoUrl) => {
         const { draft } = get();
-        const code = entry?.sessionCode ?? randomCode();
+        const code = entry.sessionCode;
         set({
           session: {
             code,
@@ -144,7 +144,7 @@ export const useSessionStore = create<SessionStore>()(
             mySeat: 0,
             myPositions: null,
             // 서버에 올라간 주소가 있으면 그것을, 없으면 고른 사진의 미리보기를 쓴다
-            photoUrl: photoUrl ?? draft.photoUrl ?? mockPhoto(),
+            photoUrl: photoUrl ?? draft.photoUrl ?? BLANK_PHOTO,
             memberCount: draft.memberCount,
             pieceCount: draft.pieceCount,
             goalMinutes: draft.goalMinutes,
@@ -160,26 +160,18 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       openAsGuest: (code, entry) => {
-        // 서버가 없으면 이미 몇 명이 들어와 있는 세션을 흉내 낸다
-        const others = entry ? [] : [MOCK_INVITE.hostName, ...MOCK_INVITE.joinedNames];
         set({
           session: {
             code,
             remote: remoteOf(entry),
-            mySeat: others.length,
+            mySeat: 0,
             myPositions: null,
-            // 방의 사진은 세션 조회에서 받아 온다. 그 전까지는 임시 그림을 둔다
-            photoUrl: mockPhoto(),
-            memberCount: MOCK_INVITE.memberCount,
+            // 사진, 인원, 목표 시간, 명단은 곧이어 세션 조회(syncRemote)로 채운다
+            photoUrl: BLANK_PHOTO,
+            memberCount: 6,
             pieceCount: 12,
             goalMinutes: 50,
-            members: [
-              ...others.map((other, index) =>
-                member(`mock-${index}`, other, { isHost: index === 0 }),
-              ),
-              member('me', '', { isMe: true }),
-              ...emptySeats(others.length + 1, MOCK_INVITE.memberCount),
-            ],
+            members: [member('me', '', { isMe: true }), ...emptySeats(1, 6)],
             phase: 'lobby',
           },
           ...FRESH,
@@ -189,7 +181,7 @@ export const useSessionStore = create<SessionStore>()(
       syncRemote: (detail) =>
         set((state) => {
           const { session } = state;
-          if (!session?.remote || session.phase !== 'lobby') return state;
+          if (!session || session.phase !== 'lobby') return state;
           const found = session.members.find((each) => each.isMe);
           if (!found) return state;
           // 방장이 나가면 서버가 다음 사람을 방장으로 올린다. 내가 방장이 됐는지 매번 서버 값을 따른다
@@ -225,7 +217,7 @@ export const useSessionStore = create<SessionStore>()(
       syncBoard: (pieces) =>
         set((state) => {
           const { session } = state;
-          if (!session?.remote || session.phase === 'lobby' || pieces.length === 0) return state;
+          if (!session || session.phase === 'lobby' || pieces.length === 0) return state;
           const mine = pieces.filter((piece) => piece.isMine).map((piece) => piece.position);
           const same =
             session.pieceCount === pieces.length && session.myPositions?.join() === mine.join();
@@ -238,7 +230,7 @@ export const useSessionStore = create<SessionStore>()(
       syncMembers: (list) =>
         set((state) => {
           const { session } = state;
-          if (!session?.remote || session.phase === 'lobby' || list.length === 0) return state;
+          if (!session || session.phase === 'lobby' || list.length === 0) return state;
           const me = session.members.find((each) => each.isMe);
           if (!me) return state;
           // 내 진행은 이 기기에서 센 값을 그대로 두고, 다른 사람은 서버 값을 따른다
@@ -283,21 +275,6 @@ export const useSessionStore = create<SessionStore>()(
             : state,
         ),
 
-      addMember: (name) =>
-        set((state) => {
-          if (!state.session) return state;
-          const seat = state.session.members.findIndex((each) => !each.joined);
-          if (seat === -1) return state;
-          return {
-            session: {
-              ...state.session,
-              members: state.session.members.map((each, index) =>
-                index === seat ? { ...each, name, joined: true } : each,
-              ),
-            },
-          };
-        }),
-
       start: () =>
         set((state) =>
           state.session?.phase === 'lobby' ? { session: started(state.session), ...FRESH } : state,
@@ -321,13 +298,8 @@ export const useSessionStore = create<SessionStore>()(
                 status: mode === 'focused' ? 'recording' : mode === 'paused' ? 'paused' : 'away',
               };
             }
-            // 서버 세션에서는 다른 사람의 상태를 진행판에서 받아 온다
-            if (session.remote) return each;
-            // TODO(mock): 다른 사람은 대체로 자리를 지키다가 가끔 비운다
-            const leaves = each.status === 'recording' ? Math.random() < 0.03 : Math.random() > 0.2;
-            const status = leaves ? 'away' : 'recording';
-            const gained = status === 'recording' ? seconds / goal : 0;
-            return { ...each, status, progress: Math.min(each.progress + gained, 1) };
+            // 다른 사람의 상태와 진행은 서버 진행판에서 받아 온다(syncMembers)
+            return each;
           });
           return {
             timeline,
