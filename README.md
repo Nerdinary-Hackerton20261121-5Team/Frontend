@@ -62,7 +62,8 @@ src
 
 ## 배포
 
-- `main` 에 합쳐지면 Vercel이 자동으로 배포합니다.
+- 배포 주소는 https://neordinary-hackathon-web.vercel.app 입니다. APK도 이 주소를 띄웁니다.
+- `main` 에 합쳐지면 Vercel이 자동으로 배포합니다. PR에는 PR별 미리보기 주소가 붙습니다.
 - 서버 주소는 Vercel 프로젝트의 환경변수 `VITE_API_BASE_URL` 로 넣습니다. 값을 바꾼 뒤에는 다시 배포해야 반영됩니다.
 
 ## 앱(APK)
