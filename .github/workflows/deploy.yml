@@ -1,0 +1,69 @@
+# 홈서버(k3s) 자동 배포: main에 push(병합)되면 이미지를 만들어 ghcr에 올리고,
+# cluster-config 레포의 이미지 태그를 갱신한다. 이후 Argo CD가 그 커밋을 감지해 클러스터에 반영한다.
+# Vercel 배포(APK가 띄우는 주소)는 이 워크플로와 무관하게 그대로 동작한다.
+#
+#   main push → docker build (linux/amd64) → ghcr.io/<owner>/<repo>:<sha> push
+#            → cluster-config deploy-image 호출 (app=fe) → 커밋 "deploy(fe): <image>"
+#            → Argo CD 롤링 업데이트 → https://cmc-11th.bemelon.me
+#
+# 필요한 것: 레포 secret CLUSTER_CONFIG_DEPLOY_KEY (secrets: inherit 로 전달)
+# 롤백: cluster-config 레포에서 해당 deploy(fe) 커밋을 revert
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # workflow_dispatch는 브랜치를 고를 수 있으므로, main이 아닌 ref는 배포하지 않는다.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64 # 홈서버 k3s가 amd64
+          push: true
+          # 같은 origin(/api)으로 호출하도록 빈 값. Vercel은 자기 환경변수를 쓴다.
+          build-args: |
+            VITE_API_BASE_URL=
+          tags: ${{ steps.meta.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    uses: Nerdinary-Hackerton20261121-5Team/cluster-config/.github/workflows/deploy-image.yml@main
+    with:
+      app: fe
+      image: ${{ needs.build.outputs.image }}
+    secrets: inherit
