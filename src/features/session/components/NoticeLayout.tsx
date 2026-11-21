@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
 interface NoticeLayoutProps {
+  /** 가운데 연두 원 안에 넣는 아이콘 */
+  icon: ReactNode;
   title: string;
   description: string;
   /** 아래에 놓는 버튼들 */
@@ -8,11 +10,13 @@ interface NoticeLayoutProps {
 }
 
 /** 더 진행할 수 없을 때 보여 주는 화면. 가운데에 안내가 있고 아래에 버튼이 있다. */
-export const NoticeLayout = ({ title, description, footer }: NoticeLayoutProps) => {
+export const NoticeLayout = ({ icon, title, description, footer }: NoticeLayoutProps) => {
   return (
     <>
       <main className='flex min-h-0 flex-1 flex-col items-center justify-center gap-7 overflow-y-auto px-5'>
-        <div className='size-[120px] shrink-0 rounded-full bg-bg-subtle' />
+        <div className='flex size-20 shrink-0 items-center justify-center rounded-full bg-brand-subtle'>
+          {icon}
+        </div>
         <div className='flex flex-col gap-3 text-center'>
           <h1 className='text-title-l text-text-primary'>{title}</h1>
           <p className='text-body-m-medium whitespace-pre-line text-text-secondary'>
