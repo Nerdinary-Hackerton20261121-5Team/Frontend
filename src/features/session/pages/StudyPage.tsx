@@ -3,7 +3,7 @@ import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
-import { useBoard, useHeartbeat, usePieceImages } from '../api';
+import { useBoard, useEndFocus, useHeartbeat, usePieceImages } from '../api';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
 import { SheetActions } from '../components/SheetActions';
@@ -32,6 +32,7 @@ export const StudyPage = () => {
   const setPaused = useSessionStore((state) => state.setPaused);
   const finishStudy = useSessionStore((state) => state.finishStudy);
   const syncBoard = useSessionStore((state) => state.syncBoard);
+  const endFocus = useEndFocus();
   const stream = useCameraStore((state) => state.stream);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -99,6 +100,12 @@ export const StudyPage = () => {
     ? ownersFromServer(pieceTotal(grid), mySlots, myIndex, session.members.length, perPerson)
     : pieceOwners(code, grid, perPerson);
   const me = session.members[myIndex];
+  // 만든 사람이 끝내면 서버에서 모두의 공부를 끝낸다. 다른 사람은 heartbeat 로 알아채고 따라 넘어온다.
+  // 참가자가 끝내면 자기 공부만 멈춘다. 연결이 끊긴 것으로 처리돼 그때까지의 복원도로 굳는다
+  const finish = () => {
+    if (!session.remote?.isCreator) return finishStudy();
+    endFocus.mutate(session.remote, { onSettled: finishStudy });
+  };
   // 서버 조각 그림을 받기 전에 그리면 정답 칸이 잠깐 드러난다. 다 받은 뒤에 그린다
   const loadingPieces =
     session.remote !== null && (board.isPending || (board.data?.hasImage && images.isPending));
@@ -146,7 +153,7 @@ export const StudyPage = () => {
             setPeopleOpen(false);
             setPaused(true);
           }}
-          onFinish={finishStudy}
+          onFinish={finish}
         />
       )}
       <BottomSheet open={paused} onClose={() => setPaused(false)}>
@@ -154,7 +161,7 @@ export const StudyPage = () => {
           cancelLabel='다시 시작'
           confirmLabel='종료'
           onCancel={() => setPaused(false)}
-          onConfirm={finishStudy}
+          onConfirm={finish}
         />
       </BottomSheet>
     </div>
