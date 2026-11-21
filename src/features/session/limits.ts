@@ -13,12 +13,14 @@ export const GOAL_MAX = 180;
 /**
  * 채운 정도(0 에서 1)에 따른 조각의 흐림 세기. 칸 너비에 대한 비율이다.
  * 서버가 남의 조각을 흐릴 때 쓰는 공식(Back_End piece-blur.ts)과 같다. 10% 단위로 선명해지고,
- * 0% 는 칸 너비의 10%, 100% 여도 약 3% 만큼은 흐리다.
+ * 0% 는 칸 너비의 10%, 100% 는 0.4% 로 거의 선명하다. 서버 값을 바꾸면 여기도 같이 바꾼다.
  * 서버는 내 조각만 선명하게 주므로 내 조각에도 같은 세기를 걸어, 어느 기기에서 보아도 같은 그림이 되게 한다
  */
+const BLUR_MAX = 48;
+const BLUR_MIN = 2;
 export const blurRatio = (restoration: number) => {
   const level = Math.floor(Math.min(Math.max(restoration, 0), 1) * 10 + 1e-9);
-  return (14 + (34 * (10 - level)) / 10) / 480;
+  return (BLUR_MIN + ((BLUR_MAX - BLUR_MIN) * (10 - level)) / 10) / 480;
 };
 /** 개설자가 다 모이기 전에 먼저 시작할 수 있는 최소 인원 */
 export const EARLY_START_MIN = 4;
