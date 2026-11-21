@@ -11,7 +11,7 @@ import { SheetActions } from '../components/SheetActions';
 import { StudyBoard } from '../components/StudyBoard';
 import { StudyHud } from '../components/StudyHud';
 import { pieceOwners } from '../goalPreview';
-import { gridFor, pieceTotal } from '../puzzle';
+import { gridFor, ownersFromServer, pieceTotal } from '../puzzle';
 import { useSessionStore } from '../store';
 import { studyGrid } from '../studyLayout';
 import { SPEED } from '../time';
@@ -76,8 +76,18 @@ export const StudyPage = () => {
   // 한 사람이 맡을 조각 수는 줄 단위 판(gridFor)과 같고, 화면에는 Figma 처럼 세로로 긴 판에 흩어 놓는다
   const perPerson = gridFor(session.pieceCount, session.members.length).cols;
   const grid = studyGrid(pieceTotal(gridFor(session.pieceCount, session.members.length)));
-  const owners = pieceOwners(code, grid, perPerson);
-  const me = session.members.find((member) => member.isMe);
+  const myIndex = session.members.findIndex((member) => member.isMe);
+  // 서버 세션이면 서버가 정한 내 칸을 쓴다. 결과 화면에서 끼우는 칸과 같아진다
+  const owners = session.myPositions
+    ? ownersFromServer(
+        pieceTotal(grid),
+        session.myPositions,
+        myIndex,
+        session.members.length,
+        perPerson,
+      )
+    : pieceOwners(code, grid, perPerson);
+  const me = session.members[myIndex];
   const showAway = away && !paused;
 
   return (

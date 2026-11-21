@@ -75,6 +75,8 @@ interface SessionStore {
   syncRemote: (detail: SessionDetail) => void;
   /** 서버 진행판의 자리 순서와 공개된 복원도를 반영한다 */
   syncBoard: (pieces: BoardPiece[]) => void;
+  /** 서버 조립판에서 제자리에 놓인 조각을 반영한다 */
+  syncAssembly: (placedIndexes: number[], myIndexes: number[], myName: string) => void;
   rename: (name: string) => void;
   addMember: (name: string) => void;
   /** 지금 들어온 사람으로 명단을 굳히고 공부를 시작한다 */
@@ -136,6 +138,7 @@ export const useSessionStore = create<SessionStore>()(
             code,
             remote: remoteOf(entry),
             mySeat: 0,
+            myPositions: null,
             photoUrl: draft.photoUrl ?? mockPhoto(),
             memberCount: draft.memberCount,
             pieceCount: draft.pieceCount,
@@ -159,6 +162,7 @@ export const useSessionStore = create<SessionStore>()(
             code,
             remote: remoteOf(entry),
             mySeat: others.length,
+            myPositions: null,
             photoUrl: invite.photoUrl ?? mockPhoto(),
             memberCount: MOCK_INVITE.memberCount,
             pieceCount: invite.pieceCount ?? 12,
@@ -216,21 +220,26 @@ export const useSessionStore = create<SessionStore>()(
       syncBoard: (pieces) =>
         set((state) => {
           const { session } = state;
-          if (!session?.remote || session.phase === 'lobby') return state;
-          const me = session.members.find((each) => each.isMe);
-          const mine = pieces.find((piece) => piece.isMine);
-          if (!me || !mine) return state;
-          // 서버가 정한 내 자리로 옮긴다. 그래야 모든 기기에서 같은 줄이 같은 사람 것이 된다
-          const others = session.members.filter((each) => !each.isMe);
-          const seat = Math.min(mine.position - 1, others.length);
-          const ordered = [...others.slice(0, seat), me, ...others.slice(seat)];
-          const members = ordered.map((each, index) => {
-            const piece = pieces.find((candidate) => candidate.position === index + 1);
-            return each.isMe || !piece || piece.restoration === null
-              ? each
-              : { ...each, progress: piece.restoration };
-          });
-          return { session: { ...session, mySeat: seat, members } };
+          if (!session?.remote || session.phase === 'lobby' || pieces.length === 0) return state;
+          const mine = pieces.filter((piece) => piece.isMine).map((piece) => piece.position);
+          const same =
+            session.pieceCount === pieces.length && session.myPositions?.join() === mine.join();
+          // 조각 수와 내 칸은 서버가 정한다. 모든 기기에서 같은 칸이 같은 사람 것이 된다
+          return same
+            ? state
+            : { session: { ...session, pieceCount: pieces.length, myPositions: mine } };
+        }),
+
+      syncAssembly: (placedIndexes, myIndexes, myName) =>
+        set((state) => {
+          const fresh = placedIndexes.filter((index) => !state.placed.includes(index));
+          if (fresh.length === 0) return state;
+          const last = fresh[fresh.length - 1];
+          return {
+            placed: [...state.placed, ...fresh],
+            // 서버는 누가 끼웠는지 알려 주지 않는다. 내 조각이 아니면 이름 없이 알린다
+            lastPlacedBy: myIndexes.includes(last) ? myName : '',
+          };
         }),
 
       rename: (name) =>

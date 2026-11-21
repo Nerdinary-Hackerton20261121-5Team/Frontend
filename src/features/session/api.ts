@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import type { Remote } from './types';
 
@@ -194,3 +194,64 @@ export const leaveSession = (remote: Remote, keepalive: boolean) =>
     `/api/sessions/${remote.sessionId}/participants/me`,
     { ...withToken(remote), keepalive },
   );
+
+/** 조립판의 조각 하나. 한 사람이 2개를 맡는다 */
+export type AssemblyPiece = {
+  pieceId: number;
+  isMine: boolean;
+  placed: boolean;
+  /** 놓인 칸 번호(왼쪽 위부터 1). 아직 안 놓였으면 null. 서버는 정답 칸을 놓기 전에는 알려 주지 않는다 */
+  position: number | null;
+  /** 주인이 자리에 없어 서버가 대신 놓은 조각인지 */
+  autoPlaced: boolean;
+};
+
+export type Assembly = {
+  status: SessionStatus;
+  boardRows: number;
+  boardCols: number;
+  totalPieces: number;
+  placedCount: number;
+  /** 모든 조각이 제자리에 놓였는지 */
+  completed: boolean;
+  pieces: AssemblyPiece[];
+};
+
+type PlaceResult = { pieceId: number; correct: boolean; placedCount: number; completed: boolean };
+
+/** 조립판을 1.5초마다 다시 읽는다. 다른 사람이 끼운 조각이 여기로 들어온다 */
+export const useAssembly = (remote: Remote | null, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['session-assembly', remote?.sessionId],
+    queryFn: () => {
+      if (!remote) throw new Error('세션에 들어가 있지 않아요');
+      return api.get<Assembly>(`/api/sessions/${remote.sessionId}/assembly`, withToken(remote));
+    },
+    enabled: remote !== null && enabled,
+    refetchInterval: 1500,
+  });
+};
+
+/**
+ * 내 조각을 칸에 놓는다. 서버는 어느 조각이 어느 칸인지 놓기 전에는 알려 주지 않으므로,
+ * 화면에서 맞는 칸에 놓았을 때 내 조각들을 그 칸에 차례로 놓아 보고 맞는 것을 찾는다(1인 2조각이라 많아야 두 번).
+ * 틀린 조각은 서버가 저장하지 않는다.
+ */
+export const usePlacePiece = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { remote: Remote; pieceIds: number[]; position: number }) => {
+      for (const pieceId of input.pieceIds) {
+        const result = await api.patch<PlaceResult>(
+          `/api/sessions/${input.remote.sessionId}/assembly/pieces/${pieceId}`,
+          { targetPosition: input.position },
+          withToken(input.remote),
+        );
+        if (result.correct) return result;
+      }
+      return null;
+    },
+    onSuccess: (_result, input) =>
+      queryClient.invalidateQueries({ queryKey: ['session-assembly', input.remote.sessionId] }),
+  });
+};
