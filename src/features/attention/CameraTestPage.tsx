@@ -163,12 +163,12 @@ export const CameraTestPage = () => {
 
   return (
     <div className='mx-auto flex min-h-dvh w-full max-w-[402px] flex-col gap-4 bg-white px-6 pt-[calc(env(safe-area-inset-top)+24px)] pb-[calc(env(safe-area-inset-bottom)+24px)]'>
-      <h1 className='text-[22px] font-bold text-ink'>카메라 판정 확인</h1>
-      <div className='relative aspect-[4/3] w-full overflow-hidden rounded-[16px] bg-surface'>
+      <h1 className='text-[22px] font-bold text-text-primary'>카메라 판정 확인</h1>
+      <div className='relative aspect-[4/3] w-full overflow-hidden rounded-[16px] bg-bg-subtle'>
         {stream ? (
           <CameraView videoRef={videoRef} className='size-full' />
         ) : (
-          <p className='flex size-full items-center justify-center text-[13px] text-sub'>
+          <p className='flex size-full items-center justify-center text-[13px] text-text-secondary'>
             카메라가 꺼져 있어요
           </p>
         )}
@@ -176,25 +176,25 @@ export const CameraTestPage = () => {
 
       <p
         className={`text-[22px] font-bold ${
-          reading && reading.attention !== 'present' ? 'text-danger' : 'text-primary'
+          reading && reading.attention !== 'present' ? 'text-status-away' : 'text-brand-primary'
         }`}
       >
         {reading ? LABEL[reading.attention] : '판정 전'}
       </p>
 
-      <dl className='grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-[12px] bg-surface p-[14px] text-[13px]'>
+      <dl className='grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-[12px] bg-bg-subtle p-[14px] text-[13px]'>
         {rows.map(([label, value]) => (
           <div key={label} className='contents'>
-            <dt className='text-sub'>{label}</dt>
-            <dd className='text-right font-bold text-ink'>{value}</dd>
+            <dt className='text-text-secondary'>{label}</dt>
+            <dd className='text-right font-bold text-text-primary'>{value}</dd>
           </div>
         ))}
       </dl>
 
-      <div className='flex flex-col gap-2 rounded-[12px] bg-surface p-[14px] text-[13px]'>
-        <p className='font-bold text-ink'>기준값 (바꾸면 처음부터 다시 판정해요)</p>
+      <div className='flex flex-col gap-2 rounded-[12px] bg-bg-subtle p-[14px] text-[13px]'>
+        <p className='font-bold text-text-primary'>기준값 (바꾸면 처음부터 다시 판정해요)</p>
         {SETTINGS.map(({ key, label, step }) => (
-          <label key={key} className='flex items-center justify-between gap-3 text-sub'>
+          <label key={key} className='flex items-center justify-between gap-3 text-text-secondary'>
             {label}
             <input
               type='number'
@@ -203,13 +203,13 @@ export const CameraTestPage = () => {
               step={step}
               value={config[key]}
               onChange={(event) => changeSetting(key, event.target.valueAsNumber)}
-              className='h-9 w-[72px] rounded-[8px] border border-line bg-white px-2 text-right font-bold text-ink'
+              className='h-9 w-[72px] rounded-[8px] border border-border-default bg-white px-2 text-right font-bold text-text-primary'
             />
           </label>
         ))}
       </div>
 
-      <p className='text-[12px] text-sub'>
+      <p className='text-[12px] text-text-secondary'>
         고개를 좌우로 돌린 것만 다른 곳을 보는 것으로 판정해요. 아래를 보는 것은 판정하지 않아요.
         얼굴이 안 보이면 몸을 찾아서, 사람이 있으면 옆을 보는지 숙였는지 가르고 아무도 없으면 자리
         비움으로 봐요.

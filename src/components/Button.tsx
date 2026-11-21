@@ -16,8 +16,8 @@ export const Button = ({
 }: ButtonProps) => {
   const style =
     variant === 'primary'
-      ? 'bg-primary text-white active:bg-primary-pressed'
-      : 'bg-transparent text-primary active:bg-surface'
+      ? 'bg-brand-primary text-text-on-brand active:bg-brand-pressed'
+      : 'bg-transparent text-brand-primary active:bg-bg-subtle'
   return (
     <button
       type="button"

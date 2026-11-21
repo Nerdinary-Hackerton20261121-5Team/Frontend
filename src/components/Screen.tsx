@@ -17,13 +17,13 @@ export const Screen = ({ title, back, action, footer, children }: ScreenProps) =
   const navigate = useNavigate()
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[402px] flex-col bg-white">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4 pt-[env(safe-area-inset-top)] box-content">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border-default px-4 pt-[env(safe-area-inset-top)] box-content">
         {back && (
           <button
             type="button"
             aria-label="뒤로"
             onClick={() => navigate(-1)}
-            className="-ml-2 flex size-10 items-center justify-center rounded-full active:bg-surface"
+            className="-ml-2 flex size-10 items-center justify-center rounded-full active:bg-bg-subtle"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -41,7 +41,7 @@ export const Screen = ({ title, back, action, footer, children }: ScreenProps) =
       </header>
       <main className="flex-1 overflow-y-auto">{children}</main>
       {footer && (
-        <footer className="shrink-0 border-t border-line px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <footer className="shrink-0 border-t border-border-default px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
           {footer}
         </footer>
       )}
