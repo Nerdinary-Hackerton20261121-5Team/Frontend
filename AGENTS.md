@@ -1,6 +1,6 @@
 # AGENTS.md
 
-해커톤 5팀 프론트엔드 저장소다. 모바일 화면 하나를 웹으로 만들어 Vercel에 배포하고, 주최 측 WebView 템플릿으로 감싼 APK를 제출한다. 심사자는 앱을 실행해 핵심 기능을 끝까지 써 보고, 코드에서 실제 서버와 통신하는지 확인한다. 목 데이터만 쓰면 API 연동 항목이 0점이다.
+해커톤 5팀 프론트엔드 저장소다. 모바일 화면 하나를 웹으로 만들어 홈서버(k3s, https://cmc-11th.bemelon.me)에 배포하고, 주최 측 WebView 템플릿으로 감싼 APK를 제출한다. 심사자는 앱을 실행해 핵심 기능을 끝까지 써 보고, 코드에서 실제 서버와 통신하는지 확인한다. 목 데이터만 쓰면 API 연동 항목이 0점이다.
 
 ## 새 기능을 만드는 방식
 
@@ -44,9 +44,47 @@
 - 서버는 NestJS이고 로컬 주소는 `http://localhost:3000`, 모든 경로에 `/api` 가 붙는다. 명세는 `http://localhost:3000/docs` 에 있다.
 - 서버는 성공하면 본문을 그대로, 실패하면 `{ statusCode, message, error }` 를 보낸다. `lib/api.ts` 가 실패를 `ApiError` 로 바꾼다. 서버 팀이 공통 응답 형식을 정하면 그 파일 하나만 고친다.
 - 앱은 배포된 웹 주소를 WebView로 띄운다. 웹에서 안 되는 기능은 앱에서도 안 되고, 앱이 백그라운드로 가면 웹 코드는 멈춘다.
-- 앱에서는 `https` 주소만 호출된다. 서버 주소는 `VITE_API_BASE_URL` 이다.
+- 앱에서는 `https` 주소만 호출된다. 배포된 웹은 서버와 같은 origin이라 `/api/...` 상대 경로로 부르고, 로컬 개발에서만 `VITE_API_BASE_URL` 로 서버 주소를 준다.
 - `HashRouter` 를 쓴다. 주소는 `/#/경로` 형태다.
 - React Router는 `react-router` 패키지에서 import 한다 (`react-router-dom` 아님).
 - Tailwind 4다. 설정 파일 없이 `src/index.css` 의 `@theme` 으로 토큰을 정의한다.
 - `main` 에 합쳐지면 바로 배포된다. 작업은 `feat/작업명` 브랜치에서 하고 PR로 합친다.
 - 커밋은 기능 단위로 나누고 `feat: 타이머 화면 추가` 형식을 쓴다.
+
+## 협업·배포 규칙 (사람·AI 기여자 공통)
+
+배포 흐름과 주소는 [README의 배포·운영 한눈에 보기](README.md#배포운영-한눈에-보기)에 있다.
+
+### 브랜치·PR
+
+- `main` 에 직접 push하지 않는다. `feat/작업명`, `fix/작업명`, `docs/작업명` 브랜치에서 작업하고 **base를 `main`으로 해서 PR**을 연다. force push·rebase로 공유 이력을 고치지 않는다.
+- 커밋은 기능 단위로 나누고 `종류: 내용` 형식(`feat`·`fix`·`style`·`refactor`·`chore`·`docs`)을 쓴다. PR 본문은 `.github/pull_request_template.md` 양식을 채우고 관련 이슈는 `closes #번호` 로 잇는다.
+- PR을 열기 전에 `npm run lint` 와 `npm run build` 를 통과시킨다. 같은 검사(`CI`)가 PR에서 자동으로 돌고, 팀원 한 명이 확인한 뒤 합친다.
+- 커밋·PR에 AI 공동작성자(Co-Authored-By)나 에이전트 도구 표기를 넣지 않는다.
+- 같은 파일을 동시에 고치지 않도록 기능마다 `src/features/{이름}` 폴더를 따로 쓴다. 공통 컴포넌트·`lib/api.ts`·라우트 목록은 바꾸기 전에 팀에 알린다.
+
+### 배포
+
+- 배포는 **`main` 머지로만** 일어난다. 머지하면 곧바로 https://cmc-11th.bemelon.me 에 반영되므로 CI가 초록인지 확인하고 합친다. 머지 뒤에는 Actions `Deploy` 가 초록인지, 화면에 반영됐는지 본다.
+- 수동 배포는 하지 않는다. 이미지를 직접 올리거나 `kubectl`·Argo CD 화면으로 운영 리소스를 고치지 않는다. `Deploy` 를 수동 실행할 때도 `main` 만 고른다.
+- 문제가 생기면 [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config) 에서 해당 `deploy(fe)` 커밋을 `git revert` 해 push한다(force push 금지). 이 레포의 코드는 별도 PR로 고친다.
+- Vercel은 쓰지 않는다. 배포 주소는 https://cmc-11th.bemelon.me 하나다.
+- 이미지는 `linux/amd64`(홈서버)로 빌드한다. 레이어 하나가 100MB를 넘으면 레지스트리 push가 `413` 으로 실패하니(Cloudflare 한도) 큰 영상·원본 이미지를 `src/assets` 나 `public` 에 넣지 않는다.
+
+### 비밀값
+
+- 이 저장소는 공개다. 비밀번호·토큰·API 키를 코드·문서·이슈·PR·커밋 메시지·스크린샷에 올리지 않는다. 브라우저로 내려가는 `VITE_` 변수는 누구나 읽을 수 있으니 비밀을 넣지 않는다.
+- 필요한 환경변수 이름은 `VITE_API_BASE_URL` 하나다(로컬 개발용 서버 주소, `.env.development`). 배포 빌드는 빈 값으로 두고, 값은 `.env.example` 에 예시만 둔다. `.env` 는 `.gitignore` 에 있다.
+- 비밀이 필요한 기능이면 직접 넣지 말고 운영자에게 묻는다. 실수로 올렸다면 바로 알려 교체한다.
+
+### 코드 계약 (바꾸면 배포가 깨진다)
+
+- 서버 호출은 같은 origin의 상대 경로 `/api/...` 로 한다(`lib/api.ts`). 배포 주소를 코드에 적지 않는다. gateway가 `/api` 는 서버(BE)로, 나머지는 이 FE로 보낸다.
+- `HashRouter` 를 유지한다. 주소는 `/#/경로` 형태이고, 정적 호스팅과 앱(WebView) 어디서든 새로고침·딥링크가 서버 설정 없이 동작한다.
+- 컨테이너는 **80 포트**에서 받고 `GET /` 가 200이어야 한다(파드 probe). `Dockerfile`·`deploy/nginx.conf`(없는 경로는 `index.html`)의 포트와 fallback을 유지한다.
+- `Dockerfile` 의 `VITE_API_BASE_URL` 기본값과 `deploy.yml` 의 빈 `build-args` 를 유지한다. 값이 들어가면 배포된 웹이 다른 origin을 불러 CORS로 막힌다.
+- `.github/workflows/`·`Dockerfile`·`deploy/` 는 배포에 영향이 있으니 바꾸기 전에 운영자와 맞춘다.
+
+### 막히면
+
+클러스터·레지스트리·Argo CD 비밀번호·배포 실패처럼 이 저장소 밖의 문제는 **운영자**에게 묻는다. 배포 상태와 파드 로그는 https://cmc-11th-argocd.bemelon.me(계정 `cmc-11th`)에서 먼저 확인하고, 본 내용을 함께 전한다.

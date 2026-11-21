@@ -60,22 +60,40 @@ src
 - **PR**. 올리기 전에 `npm run lint` 와 `npm run build` 를 통과시킵니다. 같은 검사가 PR에서 자동으로 돕니다. 팀원 한 명이 확인한 뒤 합칩니다.
 - **파일 나누기**. 기능마다 `src/features/{이름}` 폴더를 따로 써서 같은 파일을 동시에 고치지 않게 합니다.
 
-## 배포
+## 배포·운영 한눈에 보기
 
-배포 주소는 두 곳입니다.
+Back_End · Frontend · cluster-config 세 레포 README가 같은 표를 쓴다.
 
-| 주소 | 용도 | 배포 방식 |
-| ---- | ---- | --------- |
-| https://neordinary-hackathon-web.vercel.app | APK가 띄우는 주소 | `main` 에 합쳐지면 Vercel이 자동 배포. PR에는 PR별 미리보기 주소가 붙습니다. |
-| https://cmc-11th.bemelon.me | 홈서버(k3s). FE와 API가 같은 origin | `main` 에 합쳐지면 GitHub Actions가 자동 배포 |
+| 항목 | 내용 |
+|---|---|
+| 서비스 주소 | https://cmc-11th.bemelon.me (FE와 API가 같은 origin) |
+| API · 헬스체크 | https://cmc-11th.bemelon.me/api · https://cmc-11th.bemelon.me/api/health → 200 `{"status":"ok","commit":"<배포된 커밋 sha>"}` |
+| 브랜치 흐름 | 기능 브랜치 → PR(base `main`, 승인 1명) → `main` 머지. `main` 직접 push는 하지 않는다(cluster-config 제외) |
+| 배포 | 앱 레포(Back_End·Frontend) `main` 머지 → GitHub Actions `Deploy`(main 전용) → 이미지 `registry.bemelon.me/cmc-11th/back_end:<커밋 sha>`(BE) 또는 `.../frontend:<커밋 sha>`(FE) push → [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config)에 `deploy(be)` 또는 `deploy(fe)` 커밋 → Argo CD가 자동 반영(보통 1~3분). 서버에 직접 올리는 일은 없다 |
+| 롤백 | cluster-config에서 해당 `deploy(...)` 커밋을 `git revert` 후 push (force push 금지). 앱 코드는 별도 PR로 고친다 |
+| 상태·로그 | https://cmc-11th-argocd.bemelon.me · 계정 `cmc-11th` · 비밀번호는 운영자에게. 앱 4개(`be`·`fe`·`gateway`·`mysql`)의 상태 조회·SYNC·파드 로그만 가능하다 |
+| DB | MySQL 8.4. 클러스터 안에서는 `mysql:3306`(BE 파드에 `DB_HOST` 등이 주입됨). 사용자 `app`, DB `app`, 비밀번호는 운영자에게. root는 외부 접속 불가. 노트북에서는 [DB 외부 접속](#db-외부-접속) |
 
-### Vercel
+### DB 외부 접속
 
-- 서버 주소는 Vercel 프로젝트의 환경변수 `VITE_API_BASE_URL` 로 넣습니다. 값을 바꾼 뒤에는 다시 배포해야 반영됩니다.
-- **Vercel의 FE가 홈서버 API를 부르게 하려면 `VITE_API_BASE_URL=https://cmc-11th.bemelon.me` 로 바꾸고 재배포합니다.** Vercel 설정은 이 저장소에서 바꿀 수 없으므로 운영자나 팀원이 Vercel에서 직접 설정합니다.
-- PR 미리보기 주소(`*-git-*.vercel.app`)는 서버의 CORS 허용 목록에 없습니다. 미리보기에서는 서버 호출이 막히므로 API 연동은 로컬이나 `main` 배포에서 확인합니다.
+노트북의 MySQL 클라이언트(DBeaver·DataGrip·`mysql` CLI)로 운영 DB에 붙는 방법은 두 가지다. 사용자 `app`, 데이터베이스 `app`, 비밀번호는 운영자에게 받는다. 비밀번호는 `.env` 같은 로컬 파일에만 두고 레포·이슈·PR·공개 채팅에 쓰지 않는다(이 주소는 인터넷에 열려 있고 보호막은 비밀번호뿐이다. 새어 나가면 바로 운영자에게 알린다). 백업이 없으니 `DROP`·대량 `DELETE` 전에 한 번 더 확인한다. 해커톤이 끝나면 닫힌다.
 
-### 홈서버 (https://cmc-11th.bemelon.me)
+1. **cloudflared** (누구나, 비밀번호만 있으면 된다). 설치는 macOS `brew install cloudflared`, Windows `winget install --id Cloudflare.cloudflared`. 터미널 하나를 켜 둔 채로 쓴다.
+
+   ```sh
+   cloudflared access tcp --hostname cmc-11th-db.bemelon.me --url 127.0.0.1:13306
+   mysql -h 127.0.0.1 -P 13306 -u app -p app    # 다른 터미널에서
+   ```
+
+2. **Tailscale** (운영자가 `bemelon` 노드를 공유한 사람만). Tailscale 앱을 켠 상태(tailnet 안)에서만 열리고 cloudflared 없이 바로 접속한다. 이름이 안 풀리면 호스트에 `100.105.208.85`를 쓴다.
+
+   ```sh
+   mysql -h bemelon.tailc71c61.ts.net -P 30306 -u app -p app
+   ```
+
+## 배포 상세 (Frontend)
+
+배포 주소는 https://cmc-11th.bemelon.me 하나입니다. `main` 에 합쳐지면 GitHub Actions가 홈서버(k3s)에 자동 배포합니다. Vercel은 쓰지 않습니다.
 
 ```
 main 에 합쳐짐
@@ -86,16 +104,19 @@ Argo CD 가 그 커밋을 감지해 롤링 업데이트
 ```
 
 - 이미지는 `node:22-alpine` 에서 빌드한 정적 파일을 `nginx:1.27-alpine` 이 80 포트로 서빙합니다. 설정은 `deploy/nginx.conf` 이고, 없는 경로는 `index.html` 로 보냅니다.
-- 같은 origin이라 이 빌드에서는 `VITE_API_BASE_URL` 을 빈 값으로 두고 `/api/...` 를 부릅니다. gateway가 `/api` 는 서버로, 나머지는 FE로 보냅니다.
-- `main` 이 아닌 브랜치에서는 배포되지 않습니다. 배포 워크플로는 레포 secret `ZOT_USERNAME`·`ZOT_PASSWORD`(운영자 사설 레지스트리 `registry.bemelon.me`, CI 계정은 `cmc-11th/*` 에만 push)와 `CLUSTER_CONFIG_DEPLOY_KEY` 를 씁니다. 레이어 하나가 100MB를 넘으면 push가 `413`으로 실패하니(Cloudflare 한도) 큰 파일을 이미지에 넣지 않습니다.
-- 되돌릴 때는 [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config) 에서 해당 `deploy(fe)` 커밋을 revert 합니다.
+- 같은 origin이라 배포 빌드에서는 `VITE_API_BASE_URL` 을 빈 값으로 두고 `/api/...` 를 부릅니다. gateway가 `/api` 는 서버로, 나머지는 FE로 보냅니다. 로컬 개발에서만 `.env.development` 의 `VITE_API_BASE_URL` 로 서버 주소를 지정합니다.
+- PR에서는 `CI`(lint·build)만 돌고 배포는 일어나지 않습니다. 배포는 `main` 에서만 일어나고, `Deploy` 를 수동 실행(Run workflow)할 때도 `main` 만 고릅니다.
+- 배포 워크플로는 레포 secret `ZOT_USERNAME`·`ZOT_PASSWORD`(운영자 사설 레지스트리 `registry.bemelon.me`, CI 계정은 `cmc-11th/*` 에만 push)와 `CLUSTER_CONFIG_DEPLOY_KEY` 를 씁니다. 모두 운영자가 등록하며 값은 공유하지 않습니다.
+- 레이어 하나가 100MB를 넘으면 push가 `413`으로 실패하니(Cloudflare 한도) 큰 파일을 이미지에 넣지 않습니다.
+- 롤백은 [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config) 에서 해당 `deploy(fe)` 커밋을 `git revert` 해 push합니다. 이 레포의 코드는 별도 PR로 고칩니다.
 - 로컬에서 이미지를 확인하려면 `docker build --platform linux/amd64 -t frontend .` 후 `docker run -p 8080:80 frontend` 를 실행합니다.
+- 기여 규칙(브랜치·PR, 하면 안 되는 것)은 [AGENTS.md](AGENTS.md) 에 있습니다.
 
 ## 앱(APK)
 
-주최 측 WebView 템플릿이 배포된 웹 주소를 띄웁니다. 웹을 고쳐 배포하면 앱에도 바로 반영되고 APK를 다시 만들 필요가 없습니다.
+주최 측 WebView 템플릿이 배포된 웹 주소를 띄웁니다. 접속 주소는 **https://cmc-11th.bemelon.me** 입니다. 웹을 고쳐 `main` 에 합쳐 배포하면 앱에도 바로 반영되고 APK를 다시 만들 필요가 없습니다.
 
-- APK를 다시 빌드하는 경우는 앱 이름, 아이콘, 패키지명, 스플래시, 접속 주소를 바꿀 때뿐입니다.
+- APK를 다시 빌드하는 경우는 앱 이름, 아이콘, 패키지명, 스플래시, 접속 주소를 바꿀 때뿐입니다. 접속 주소를 이 주소로 바꾼 뒤에는 한 번 다시 빌드해야 합니다(주최 측 템플릿에서 팀이 직접 합니다. 이 레포 밖 작업입니다).
 - 앱에서는 `https` 주소만 열립니다. 서버 주소도 `https` 여야 합니다.
 - 웹에서 안 되는 기능은 앱에서도 안 됩니다. 앱이 백그라운드로 가거나 화면이 꺼지면 웹 코드가 멈추므로, 타이머는 시작 시각을 저장해 계산합니다.
 

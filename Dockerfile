@@ -1,5 +1,5 @@
 # 홈서버(k3s) 배포용 이미지. 빌드한 정적 파일을 nginx가 80 포트로 서빙한다.
-# Vercel 배포는 이 파일을 쓰지 않는다.
+# 이 이미지가 유일한 배포본이다(Vercel은 쓰지 않는다).
 
 FROM node:22-alpine AS build
 WORKDIR /app
