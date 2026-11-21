@@ -5,6 +5,7 @@ import { Chip } from '@/shared/Chip';
 import { shouldUseMock, useCreateSession } from '../api';
 import { Accent } from '../components/Accent';
 import { GoalPreview } from '../components/GoalPreview';
+import { HOST_NAME } from '../limits';
 import { getPickedPhoto } from '../pickedPhoto';
 import { StepLayout } from '../components/StepLayout';
 import { TimeSheet } from '../components/TimeSheet';
@@ -47,6 +48,7 @@ export const NewGoalPage = () => {
         maxParticipants: draft.memberCount,
         // 이전 버전에서 만든 값이 남아 있으면 요청 ID 가 없을 수 있다
         clientRequestId: draft.requestId ?? crypto.randomUUID(),
+        nickname: HOST_NAME,
         photo: getPickedPhoto(),
       },
       {

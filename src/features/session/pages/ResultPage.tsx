@@ -7,7 +7,7 @@ import { AssemblyView } from '../components/AssemblyView';
 import { DoneView } from '../components/DoneView';
 import { useMockAssembly } from '../mock';
 import { gridFor, piecesOfRow, pieceTotal } from '../puzzle';
-import { useSessionStore } from '../store';
+import { remoteId, useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
 
 /** 09 결과. 공부가 끝나면 함께 퍼즐을 맞추고, 다 맞추면 완성된 사진을 본다. */
@@ -50,19 +50,24 @@ export const ResultPage = () => {
         Object.entries(images.data.urls).map(([position, url]) => [Number(position) - 1, url]),
       )
     : undefined;
-  const myName = session?.members.find((member) => member.isMe)?.name ?? '';
+  const members = session?.members;
+  const myName = members?.find((member) => member.isMe)?.name ?? '';
   const myPositions = session?.myPositions ?? null;
   useEffect(() => {
     if (!assembly.data) return;
     const placedIndexes = assembly.data.pieces
       .filter((piece) => piece.placed && piece.position !== null)
       .map((piece) => (piece.position ?? 0) - 1);
-    syncAssembly(
-      placedIndexes,
-      (myPositions ?? []).map((position) => position - 1),
-      myName,
+    // 조각의 주인 이름. 내 조각이면 내 이름, 명단에 없으면 이름 없이 알린다
+    const owners = new Map(
+      assembly.data.pieces.map((piece) => [(piece.position ?? 0) - 1, piece] as const),
     );
-  }, [assembly.data, myPositions, myName, syncAssembly]);
+    syncAssembly(placedIndexes, (index) => {
+      const piece = owners.get(index);
+      if (!piece || piece.isMine) return myName;
+      return members?.find((member) => member.id === remoteId(piece.participantId))?.name ?? '';
+    });
+  }, [assembly.data, members, myName, syncAssembly]);
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
@@ -81,6 +86,11 @@ export const ResultPage = () => {
     ? myPositions.map((position) => position - 1)
     : piecesOfRow(myRow, grid);
   const completed = assembly.data?.completed ?? placed.length === pieceTotal(grid);
+  // 아직 조각을 끼우지 않은 다른 사람. 이름을 아는 사람만 알린다
+  const waitingPiece = assembly.data?.pieces.find((piece) => !piece.isMine && !piece.placed);
+  const waitingName = waitingPiece
+    ? members?.find((member) => member.id === remoteId(waitingPiece.participantId))?.name
+    : undefined;
   const boardAspect = images.data ? (images.data.cellAspect * grid.cols) / grid.rows : undefined;
 
   const onPlace = (index: number) => {
@@ -127,6 +137,7 @@ export const ResultPage = () => {
       padRatio={board.data?.padRatio}
       aspect={boardAspect}
       lastPlacedBy={lastPlacedBy}
+      waitingName={waitingName}
       onPlace={onPlace}
     />
   );

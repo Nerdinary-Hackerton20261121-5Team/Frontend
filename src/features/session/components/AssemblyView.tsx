@@ -28,6 +28,8 @@ interface AssemblyViewProps {
   myPieces: number[];
   /** 마지막으로 조각을 끼운 사람. 누군지 모르면 빈 문자열 */
   lastPlacedBy: string | null;
+  /** 서버 세션에서 아직 조각을 끼우지 않은 다른 사람의 이름 */
+  waitingName?: string;
   /** 서버가 오려 준 조각 그림(조각 번호별). 있으면 이것으로 그리고, 없으면 사진을 직접 잘라 그린다 */
   pieceImages?: Record<number, string>;
   /** 조각 그림이 칸보다 사방으로 얼마나 큰지(칸 크기에 대한 비율) */
@@ -45,6 +47,7 @@ export const AssemblyView = ({
   placed,
   myPieces,
   lastPlacedBy,
+  waitingName,
   pieceImages,
   padRatio = 0.2,
   aspect = BOARD_WIDTH / BOARD_HEIGHT,
@@ -58,13 +61,13 @@ export const AssemblyView = ({
   const total = pieceTotal(grid);
   const myRow = session.members.findIndex((member) => member.isMe);
   const remaining = myPieces.filter((index) => !placed.includes(index));
-  // 서버 세션에서는 다른 사람의 조각이 어느 칸인지 알 수 없어 이름을 대지 않는다
-  const waitingFor = session.remote
-    ? undefined
+  // 서버 세션은 서버가 알려 준 주인으로, 흉내 낸 세션은 줄 단위로 맡은 사람을 찾는다
+  const waiting = session.remote
+    ? waitingName
     : session.members.find(
         (member, row) =>
           !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
-      );
+      )?.name;
 
   // 판은 Figma 크기 안에서 비율을 지키며 가장 크게 둔다
   const boardHeight = Math.min(BOARD_HEIGHT, area.height, BOARD_WIDTH / aspect);
@@ -231,8 +234,8 @@ export const AssemblyView = ({
         <span className='text-body-m-medium text-text-primary'>
           {placed.length} / {total}
         </span>
-        {waitingFor && placed.length > 0
-          ? `${waitingFor.name}님 조각을 기다리는 중`
+        {waiting && placed.length > 0
+          ? `${waiting}님 조각을 기다리는 중`
           : remaining.length === 0 && placed.length > 0
             ? '다른 사람의 조각을 기다리는 중'
             : `${session.members.length}명이 함께 맞추는 중`}

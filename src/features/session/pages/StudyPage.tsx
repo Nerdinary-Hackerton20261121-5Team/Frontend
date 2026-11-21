@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
@@ -24,6 +24,11 @@ const MAX_BLUR = 8;
 /** 사진 카드의 모서리 둥글기(px) */
 const BOARD_RADIUS = 16;
 
+const watchVisibility = (onChange: () => void) => {
+  document.addEventListener('visibilitychange', onChange);
+  return () => document.removeEventListener('visibilitychange', onChange);
+};
+
 /** 06 공부 중. 자리를 지키는 동안 내 조각이 선명해진다. 06-1 자리 비움, 07 함께하는 사람, 08 일시정지를 함께 다룬다. */
 export const StudyPage = () => {
   const { code, session } = useCurrentSession();
@@ -33,6 +38,7 @@ export const StudyPage = () => {
   const setPaused = useSessionStore((state) => state.setPaused);
   const finishStudy = useSessionStore((state) => state.finishStudy);
   const syncBoard = useSessionStore((state) => state.syncBoard);
+  const syncMembers = useSessionStore((state) => state.syncMembers);
   const endFocus = useEndFocus();
   const stream = useCameraStore((state) => state.stream);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -45,9 +51,12 @@ export const StudyPage = () => {
   // 판정 모델을 아직 못 불렀을 때는 자리에 있는 것으로 본다
   const away = attention === 'absent' || attention === 'looking-away';
   useWakeLock(studying);
+  const hidden = useSyncExternalStore(watchVisibility, () => document.hidden);
 
   // 서버 세션이면 연결을 알리고, 서버의 공부 시간이 끝났으면 함께 퍼즐 맞추기로 넘어간다
-  const heartbeat = useHeartbeat(session?.remote ?? null, studying);
+  // 얼굴이 보이는 동안만 서버에 공부 시간이 쌓인다. 화면을 가렸을 때도 자리 비움으로 알린다
+  const presence = paused ? 'PAUSED' : away || hidden ? 'AWAY' : 'FOCUSING';
+  const heartbeat = useHeartbeat(session?.remote ?? null, studying, presence);
   const endedOnServer =
     heartbeat.data?.status === 'ASSEMBLING' || heartbeat.data?.status === 'COMPLETED';
   useEffect(() => {
@@ -57,8 +66,10 @@ export const StudyPage = () => {
   // 서버가 정한 내 자리를 따른다
   const board = useBoard(session?.remote ?? null, studying);
   useEffect(() => {
-    if (board.data) syncBoard(board.data.pieces);
-  }, [board.data, syncBoard]);
+    if (!board.data) return;
+    syncBoard(board.data.pieces);
+    syncMembers(board.data.members);
+  }, [board.data, syncBoard, syncMembers]);
   // 서버가 오려 준 조각 그림. 공부 중에는 정답 칸이 드러나지 않게 서버가 섞어 준 칸에 놓는다
   const images = usePieceImages(
     session?.remote ?? null,

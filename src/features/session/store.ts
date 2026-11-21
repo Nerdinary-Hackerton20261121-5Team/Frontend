@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { BoardPiece, SessionDetail, SessionEntry } from './api';
-import { PIECES_PER_PERSON } from './limits';
+import type { BoardMember, BoardPiece, SessionDetail, SessionEntry } from './api';
+import { HOST_NAME, PIECES_PER_PERSON } from './limits';
 import { MOCK_INVITE, mockPhoto } from './mockData';
 import type { Member, Session, TickMode, Timeline } from './types';
 
@@ -44,6 +44,9 @@ const emptySeats = (from: number, to: number) =>
     member(`seat-${from + index}`, '', { joined: false }),
   );
 
+/** 서버 참가자 번호로 만든 명단 id */
+export const remoteId = (participantId: number) => `p-${participantId}`;
+
 const randomCode = () => Math.random().toString(36).slice(2, 6);
 
 const remoteOf = (entry: SessionEntry | null) =>
@@ -72,8 +75,10 @@ interface SessionStore {
   syncRemote: (detail: SessionDetail) => void;
   /** 서버 진행판의 자리 순서와 공개된 복원도를 반영한다 */
   syncBoard: (pieces: BoardPiece[]) => void;
+  /** 서버 진행판의 명단(이름, 상태, 채운 정도)을 반영한다 */
+  syncMembers: (members: BoardMember[]) => void;
   /** 서버 조립판에서 제자리에 놓인 조각을 반영한다 */
-  syncAssembly: (placedIndexes: number[], myIndexes: number[], myName: string) => void;
+  syncAssembly: (placedIndexes: number[], ownerName: (index: number) => string) => void;
   rename: (name: string) => void;
   addMember: (name: string) => void;
   /** 지금 들어온 사람으로 명단을 굳히고 공부를 시작한다 */
@@ -142,7 +147,7 @@ export const useSessionStore = create<SessionStore>()(
             pieceCount: draft.pieceCount,
             goalMinutes: draft.goalMinutes,
             members: [
-              member('me', '개설자', { isMe: true, isHost: true }),
+              member('me', HOST_NAME, { isMe: true, isHost: true }),
               ...emptySeats(1, draft.memberCount),
             ],
             phase: 'lobby',
@@ -187,21 +192,19 @@ export const useSessionStore = create<SessionStore>()(
           if (!found) return state;
           // 방장이 나가면 서버가 다음 사람을 방장으로 올린다. 내가 방장이 됐는지 매번 서버 값을 따른다
           const isCreator = detail.me.isCreator;
-          const me = { ...found, isHost: isCreator };
           const capacity = detail.maxParticipants ?? session.memberCount;
-          // 서버는 다른 사람의 이름을 주지 않는다. 내가 들어온 순서를 기준으로 번호를 붙인다
-          const mySeat = isCreator
-            ? 0
-            : Math.min(session.mySeat || detail.participantCount - 1, detail.participantCount - 1);
-          const known = new Map(session.members.map((each) => [each.id, each]));
-          const joined = Array.from({ length: detail.participantCount }, (_, seat) => {
-            if (seat === mySeat) return me;
-            const id = `remote-${seat}`;
-            return (
-              known.get(id) ??
-              member(id, `참가자 ${seat + 1}`, { isHost: !me.isHost && seat === 0 })
-            );
-          });
+          // 명단은 서버의 입장 순서를 따른다. 이름을 아직 정하지 않은 사람은 번호로 부른다
+          const joined = detail.participants.map((each, seat) =>
+            each.participantId === detail.me.participantId
+              ? { ...found, name: found.name || (each.nickname ?? ''), isHost: isCreator }
+              : member(remoteId(each.participantId), each.nickname ?? `참가자 ${seat + 1}`, {
+                  isHost: each.isCreator,
+                }),
+          );
+          const mySeat = Math.max(
+            detail.participants.findIndex((each) => each.participantId === detail.me.participantId),
+            0,
+          );
           const synced: Session = {
             ...session,
             remote: { ...session.remote, isCreator },
@@ -230,15 +233,37 @@ export const useSessionStore = create<SessionStore>()(
             : { session: { ...session, pieceCount: pieces.length, myPositions: mine } };
         }),
 
-      syncAssembly: (placedIndexes, myIndexes, myName) =>
+      syncMembers: (list) =>
+        set((state) => {
+          const { session } = state;
+          if (!session?.remote || session.phase === 'lobby' || list.length === 0) return state;
+          const me = session.members.find((each) => each.isMe);
+          if (!me) return state;
+          // 내 진행은 이 기기에서 센 값을 그대로 두고, 다른 사람은 서버 값을 따른다
+          const members = list.map((each, seat) =>
+            each.isMe
+              ? me
+              : member(remoteId(each.participantId), each.nickname ?? `참가자 ${seat + 1}`, {
+                  progress: each.restoration,
+                  status:
+                    each.state === 'FOCUSING'
+                      ? 'recording'
+                      : each.state === 'PAUSED'
+                        ? 'paused'
+                        : 'away',
+                }),
+          );
+          return { session: { ...session, members } };
+        }),
+
+      syncAssembly: (placedIndexes, ownerName) =>
         set((state) => {
           const fresh = placedIndexes.filter((index) => !state.placed.includes(index));
           if (fresh.length === 0) return state;
           const last = fresh[fresh.length - 1];
           return {
             placed: [...state.placed, ...fresh],
-            // 서버는 누가 끼웠는지 알려 주지 않는다. 내 조각이 아니면 이름 없이 알린다
-            lastPlacedBy: myIndexes.includes(last) ? myName : '',
+            lastPlacedBy: ownerName(last),
           };
         }),
 
@@ -294,7 +319,9 @@ export const useSessionStore = create<SessionStore>()(
                 status: mode === 'focused' ? 'recording' : mode === 'paused' ? 'paused' : 'away',
               };
             }
-            // 다른 사람은 대체로 자리를 지키다가 가끔 비운다
+            // 서버 세션에서는 다른 사람의 상태를 진행판에서 받아 온다
+            if (session.remote) return each;
+            // TODO(mock): 다른 사람은 대체로 자리를 지키다가 가끔 비운다
             const leaves = each.status === 'recording' ? Math.random() < 0.03 : Math.random() > 0.2;
             const status = leaves ? 'away' : 'recording';
             const gained = status === 'recording' ? seconds / goal : 0;
