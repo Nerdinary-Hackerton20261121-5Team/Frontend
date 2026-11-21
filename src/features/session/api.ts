@@ -48,6 +48,17 @@ export type Heartbeat = {
   serverNow: string;
 };
 
+/** 진행판의 한 칸. 한 사람이 한 칸을 맡는다 */
+export type BoardPiece = {
+  /** 왼쪽 위부터 1 */
+  position: number;
+  isMine: boolean;
+  /** 0 에서 1. 공부 중에는 내 것만 값이 있고 남의 것은 null 이다 */
+  restoration: number | null;
+};
+
+export type Board = { status: SessionStatus; pieces: BoardPiece[] };
+
 const withToken = (remote: Remote) => ({ 'X-Participant-Token': remote.token });
 
 /**
@@ -145,5 +156,29 @@ export const useHeartbeat = (remote: Remote | null, enabled: boolean) => {
     enabled: remote !== null && enabled,
     refetchInterval: 10_000,
     refetchIntervalInBackground: true,
+  });
+};
+
+/** 진행판을 읽는다. 내가 몇 번째 자리인지와, 공개된 다른 사람의 복원도를 알 수 있다 */
+export const useBoard = (remote: Remote | null, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['session-board', remote?.sessionId],
+    queryFn: () => {
+      if (!remote) throw new Error('세션에 들어가 있지 않아요');
+      return api.get<Board>(`/api/sessions/${remote.sessionId}/board`, withToken(remote));
+    },
+    enabled: remote !== null && enabled,
+    refetchInterval: 10_000,
+  });
+};
+
+/** 방을 끝내고 서버의 자료를 지운다. 만든 사람만 할 수 있다 */
+export const useEndSession = () => {
+  return useMutation({
+    mutationFn: (remote: Remote) =>
+      api.delete<{ sessionId: number; deleted: boolean }>(
+        `/api/sessions/${remote.sessionId}`,
+        withToken(remote),
+      ),
   });
 };

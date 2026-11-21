@@ -3,7 +3,7 @@ import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
-import { useHeartbeat } from '../api';
+import { useBoard, useHeartbeat } from '../api';
 import { AwayCard } from '../components/AwayCard';
 import { JigsawBoard } from '../components/JigsawBoard';
 import { PausedOverlay } from '../components/PausedOverlay';
@@ -30,6 +30,7 @@ export const StudyPage = () => {
   const tick = useSessionStore((state) => state.tick);
   const setPaused = useSessionStore((state) => state.setPaused);
   const finishStudy = useSessionStore((state) => state.finishStudy);
+  const syncBoard = useSessionStore((state) => state.syncBoard);
   const stream = useCameraStore((state) => state.stream);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -49,6 +50,12 @@ export const StudyPage = () => {
   useEffect(() => {
     if (endedOnServer) finishStudy();
   }, [endedOnServer, finishStudy]);
+
+  // 서버가 정한 내 자리를 따른다
+  const board = useBoard(session?.remote ?? null, studying);
+  useEffect(() => {
+    if (board.data) syncBoard(board.data.pieces);
+  }, [board.data, syncBoard]);
 
   useEffect(() => {
     if (!studying) return;

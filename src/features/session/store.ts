@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { SessionDetail, SessionEntry } from './api';
+import type { BoardPiece, SessionDetail, SessionEntry } from './api';
 import { MOCK_INVITE, mockPhoto } from './mockData';
 import type { Member, Session, TickMode, Timeline } from './types';
 
@@ -64,6 +64,8 @@ interface SessionStore {
   openAsGuest: (code: string, entry: SessionEntry | null, invite: Invite) => void;
   /** 서버에서 읽은 인원, 목표 시간, 단계를 반영한다 */
   syncRemote: (detail: SessionDetail) => void;
+  /** 서버 진행판의 자리 순서와 공개된 복원도를 반영한다 */
+  syncBoard: (pieces: BoardPiece[]) => void;
   rename: (name: string) => void;
   addMember: (name: string) => void;
   /** 지금 들어온 사람으로 명단을 굳히고 공부를 시작한다 */
@@ -177,6 +179,26 @@ export const useSessionStore = create<SessionStore>()(
           return detail.status === 'WAITING'
             ? { session: synced }
             : { session: started(synced), ...FRESH };
+        }),
+
+      syncBoard: (pieces) =>
+        set((state) => {
+          const { session } = state;
+          if (!session?.remote || session.phase === 'lobby') return state;
+          const me = session.members.find((each) => each.isMe);
+          const mine = pieces.find((piece) => piece.isMine);
+          if (!me || !mine) return state;
+          // 서버가 정한 내 자리로 옮긴다. 그래야 모든 기기에서 같은 줄이 같은 사람 것이 된다
+          const others = session.members.filter((each) => !each.isMe);
+          const seat = Math.min(mine.position - 1, others.length);
+          const ordered = [...others.slice(0, seat), me, ...others.slice(seat)];
+          const members = ordered.map((each, index) => {
+            const piece = pieces.find((candidate) => candidate.position === index + 1);
+            return each.isMe || !piece || piece.restoration === null
+              ? each
+              : { ...each, progress: piece.restoration };
+          });
+          return { session: { ...session, mySeat: seat, members } };
         }),
 
       rename: (name) =>

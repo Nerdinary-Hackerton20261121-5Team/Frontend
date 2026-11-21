@@ -5,11 +5,12 @@ import type { Timeline } from '../types';
 interface ResultSummaryProps {
   timeline: Timeline;
   goalMinutes: number;
+  ending: boolean;
   onHome: () => void;
 }
 
 /** 퍼즐을 다 맞춘 뒤 아래에서 올라와 있는 요약. 시간이 어디에 쓰였는지 보여 준다. */
-export const ResultSummary = ({ timeline, goalMinutes, onHome }: ResultSummaryProps) => {
+export const ResultSummary = ({ timeline, goalMinutes, ending, onHome }: ResultSummaryProps) => {
   const rows = [
     {
       label: '화면에 둔 시간',
@@ -33,7 +34,9 @@ export const ResultSummary = ({ timeline, goalMinutes, onHome }: ResultSummaryPr
             </div>
           ))}
         </dl>
-        <Button onClick={onHome}>처음으로</Button>
+        <Button loading={ending} onClick={onHome}>
+          처음으로
+        </Button>
       </div>
     </section>
   );

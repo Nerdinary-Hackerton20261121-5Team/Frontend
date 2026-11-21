@@ -11,15 +11,11 @@ export const EntryPage = () => {
   const reset = useSessionStore((state) => state.reset);
   const stopCamera = useCameraStore((state) => state.stop);
 
-  // 세션 도중에 처음으로 돌아왔다면 켜 둔 카메라를 끈다
+  // 처음으로 돌아왔으면 이전 세션을 비우고 켜 둔 카메라를 끈다
   useEffect(() => {
-    stopCamera();
-  }, [stopCamera]);
-
-  const create = () => {
     reset();
-    navigate('/new/photo');
-  };
+    stopCamera();
+  }, [reset, stopCamera]);
 
   return (
     <>
@@ -36,7 +32,7 @@ export const EntryPage = () => {
         </p>
       </main>
       <footer className='shrink-0 px-5 pt-2 pb-[calc(22px+env(safe-area-inset-bottom))]'>
-        <Button onClick={create}>세션 만들기</Button>
+        <Button onClick={() => navigate('/new/photo')}>세션 만들기</Button>
       </footer>
     </>
   );

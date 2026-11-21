@@ -10,11 +10,13 @@ interface DoneViewProps {
   session: Session;
   grid: Grid;
   timeline: Timeline;
+  /** 방을 정리하는 중인지 */
+  ending: boolean;
   onHome: () => void;
 }
 
 /** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 준다. */
-export const DoneView = ({ session, grid, timeline, onHome }: DoneViewProps) => {
+export const DoneView = ({ session, grid, timeline, ending, onHome }: DoneViewProps) => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const size = useElementSize(frameRef);
 
@@ -35,7 +37,12 @@ export const DoneView = ({ session, grid, timeline, onHome }: DoneViewProps) => 
       >
         완성! 사진이 공개됐어요
       </Toast>
-      <ResultSummary timeline={timeline} goalMinutes={session.goalMinutes} onHome={onHome} />
+      <ResultSummary
+        timeline={timeline}
+        goalMinutes={session.goalMinutes}
+        ending={ending}
+        onHome={onHome}
+      />
     </div>
   );
 };
