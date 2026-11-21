@@ -27,7 +27,8 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
     set({ starting: true, error: null });
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        // 판정에는 작은 영상이면 충분하다. 해상도를 낮춰 배터리와 발열을 줄인다
+        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
         audio: false,
       });
       set({ stream, starting: false });
