@@ -35,14 +35,30 @@ const TIMEOUT_MS = 10_000
 const FALLBACK_MESSAGE = '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
 
 type Body = Record<string, unknown> | FormData
+/** 요청마다 달라지는 값 */
+type Options = {
+  /** 덧붙일 헤더. 참가자 토큰처럼 요청마다 다른 값을 넣을 때 쓴다 */
+  headers?: Record<string, string>
+  /** 화면을 떠나는 중에도 요청을 끝까지 보낸다. 나가기처럼 페이지가 닫힐 때 부르는 요청에 쓴다 */
+  keepalive?: boolean
+}
 
-async function request<T>(method: string, path: string, body?: Body): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: Body,
+  options: Options = {},
+): Promise<T> {
   const isForm = body instanceof FormData
   let response: Response
   try {
     response = await fetch(BASE_URL + path, {
       method,
-      headers: body && !isForm ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
+        ...options.headers,
+      },
+      keepalive: options.keepalive,
       body: isForm ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -69,9 +85,12 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: Body) => request<T>('POST', path, body),
-  put: <T>(path: string, body?: Body) => request<T>('PUT', path, body),
-  patch: <T>(path: string, body?: Body) => request<T>('PATCH', path, body),
-  delete: <T = void>(path: string) => request<T>('DELETE', path),
+  get: <T>(path: string, options?: Options) => request<T>('GET', path, undefined, options),
+  post: <T>(path: string, body?: Body, options?: Options) =>
+    request<T>('POST', path, body, options),
+  put: <T>(path: string, body?: Body, options?: Options) => request<T>('PUT', path, body, options),
+  patch: <T>(path: string, body?: Body, options?: Options) =>
+    request<T>('PATCH', path, body, options),
+  delete: <T = void>(path: string, options?: Options) =>
+    request<T>('DELETE', path, undefined, options),
 }

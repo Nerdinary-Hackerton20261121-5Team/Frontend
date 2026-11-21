@@ -31,9 +31,13 @@ src
 ├── shared                  디자인 시스템 공통 컴포넌트 (Button, Header)
 ├── components              TextField, 상태 화면
 └── features
-    └── home                서버 연결 확인 화면. 실제 첫 화면으로 바꾼다
-        ├── api.ts          React Query 훅
-        └── HomePage.tsx
+    ├── attention           카메라로 자리에 있는지 판정
+    └── session             세션 화면 (진입, 만들기, 대기실, 공부, 결과)
+        ├── api.ts          React Query 훅 (사진 업로드)
+        ├── store.ts        세션 상태
+        ├── mock.ts         세션 서버 API 가 생기기 전까지 쓰는 임시 동작
+        ├── pages           화면 하나에 파일 하나
+        └── components      화면 안의 조각
 ```
 
 ## 새 화면을 추가하는 순서

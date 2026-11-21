@@ -152,7 +152,7 @@ export const ExamplePage = () => {
             시트 열기
           </Button>
           <p className='text-caption-regular text-text-secondary'>
-            바깥을 누르거나 Esc 를 누르면 닫힌다
+            아래로 끌어내리거나, 바깥을 누르거나, Esc 를 누르면 닫힌다
           </p>
         </section>
       </main>
