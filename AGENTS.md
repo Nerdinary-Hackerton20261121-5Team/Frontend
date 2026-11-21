@@ -42,7 +42,7 @@
 ## 이 저장소에서 헷갈리는 것
 
 - 서버는 NestJS이고 로컬 주소는 `http://localhost:3000`, 모든 경로에 `/api` 가 붙는다. 명세는 `http://localhost:3000/docs` 에 있다.
-- 서버는 성공하면 본문을 그대로, 실패하면 `{ statusCode, message, error }` 를 보낸다. `lib/api.ts` 가 실패를 `ApiError` 로 바꾼다. 서버 팀이 공통 응답 형식을 정하면 그 파일 하나만 고친다.
+- 서버는 `{ success, code, message, data }` 로 응답한다. `lib/api.ts` 가 성공이면 `data` 만 꺼내 돌려주고, 실패면 `message` 와 `code` 를 담은 `ApiError` 로 바꾼다. 그래서 `api.get<T>` 의 `T` 는 `data` 의 타입이다. 공통 응답 형식이 바뀌면 그 파일 하나만 고친다.
 - 앱은 배포된 웹 주소를 WebView로 띄운다. 웹에서 안 되는 기능은 앱에서도 안 되고, 앱이 백그라운드로 가면 웹 코드는 멈춘다.
 - 앱에서는 `https` 주소만 호출된다. 배포된 웹은 서버와 같은 origin이라 `/api/...` 상대 경로로 부르고, 로컬 개발에서만 `VITE_API_BASE_URL` 로 서버 주소를 준다.
 - `HashRouter` 를 쓴다. 주소는 `/#/경로` 형태다.
