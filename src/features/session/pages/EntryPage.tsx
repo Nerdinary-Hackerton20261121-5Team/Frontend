@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import illustration from '@/assets/images/entry-illustration.png';
+import shadow from '@/assets/images/entry-shadow.png';
 import { useCameraStore } from '@/features/attention/camera';
 import { Button } from '@/shared/Button';
 import { Accent } from '../components/Accent';
@@ -34,6 +36,23 @@ export const EntryPage = () => {
           <br />
           목표 시간 동안 자리를 지키면 내 조각이 만들어져요
         </p>
+        {/* Figma 393px 프레임 기준 위치. 일러스트는 화면 폭 그대로라 가운데 두고, 바닥 그림자는 그 중심에서 왼쪽으로 136.5px 지점에 둔다 */}
+        <div className='relative -mx-5 mt-[59px] h-[345px] shrink-0 overflow-hidden'>
+          <img
+            src={illustration}
+            alt=''
+            width={393}
+            height={286}
+            className='absolute top-0 left-1/2 max-w-none -translate-x-1/2'
+          />
+          <img
+            src={shadow}
+            alt=''
+            width={206}
+            height={34}
+            className='absolute top-[311px] left-[calc(50%-136.5px)] max-w-none'
+          />
+        </div>
       </main>
       <footer className='shrink-0 px-5 pt-2 pb-[calc(22px+env(safe-area-inset-bottom))]'>
         <Button onClick={create}>세션 만들기</Button>

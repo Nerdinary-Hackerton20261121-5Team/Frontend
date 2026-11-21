@@ -81,7 +81,7 @@ export const PhotoPage = () => {
       footer={
         <>
           {failed && (
-            <Toast variant='dark' className='self-center bg-brand-strong'>
+            <Toast variant='dark' alert className='self-center bg-brand-strong text-body-m-bold'>
               업로드에 실패했어요. 다른 사진을 골라 주세요.
             </Toast>
           )}
