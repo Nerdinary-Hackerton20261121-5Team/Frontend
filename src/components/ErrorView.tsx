@@ -1,4 +1,4 @@
-import { Button } from './Button'
+import { Button } from '@/shared/Button'
 
 interface ErrorViewProps {
   message: string
@@ -13,10 +13,10 @@ export const ErrorView = ({ message, onRetry }: ErrorViewProps) => {
       className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center"
     >
       <p className="text-base font-semibold">문제가 생겼어요</p>
-      <p className="text-sm text-sub">{message}</p>
+      <p className="text-sm text-text-secondary">{message}</p>
       {onRetry && (
         <div className="mt-4 w-full">
-          <Button variant="ghost" onClick={onRetry}>
+          <Button variant="secondary" onClick={onRetry}>
             다시 시도
           </Button>
         </div>

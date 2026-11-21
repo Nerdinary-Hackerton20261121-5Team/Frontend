@@ -1,18 +1,7 @@
 @import 'tailwindcss';
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
-
-/* 디자인 시스템이 나오면 여기 값만 바꾼다. bg-primary, text-ink 처럼 클래스로 쓴다. */
-@theme {
-  --color-primary: #2563eb;
-  --color-primary-pressed: #1d4ed8;
-  --color-ink: #111827;
-  --color-sub: #6b7280;
-  --color-line: #e5e7eb;
-  --color-surface: #f9fafb;
-  --color-danger: #dc2626;
-  --font-sans:
-    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-}
+@import './styles/typography.css';
+@import './styles/colors.css';
 
 html,
 body,
@@ -20,10 +9,22 @@ body,
   height: 100%;
 }
 
+/* Tailwind 4 는 버튼 커서를 기본값으로 두므로 여기서 정한다. base 레이어라 cursor-* 클래스로 덮을 수 있다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
 body {
   margin: 0;
   background: #e5e7eb;
-  color: var(--color-ink);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }

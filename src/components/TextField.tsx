@@ -10,16 +10,16 @@ export const TextField = ({ label, error, id, className = '', ...rest }: TextFie
   const inputId = id ?? rest.name
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-sub">
+      <label htmlFor={inputId} className="text-sm font-medium text-text-secondary">
         {label}
       </label>
       <input
         id={inputId}
         aria-invalid={Boolean(error)}
-        className={`h-12 rounded-xl border px-3 text-base outline-none focus:border-primary ${error ? 'border-danger' : 'border-line'} ${className}`}
+        className={`h-12 rounded-xl border px-3 text-base outline-none focus:border-brand-primary ${error ? 'border-status-away' : 'border-border-default'} ${className}`}
         {...rest}
       />
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && <p className="text-sm text-status-away">{error}</p>}
     </div>
   )
 }

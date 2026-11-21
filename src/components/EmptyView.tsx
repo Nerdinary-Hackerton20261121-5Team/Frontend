@@ -11,7 +11,7 @@ export const EmptyView = ({ title, description, action }: EmptyViewProps) => {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
       <p className="text-base font-semibold">{title}</p>
-      {description && <p className="text-sm text-sub">{description}</p>}
+      {description && <p className="text-sm text-text-secondary">{description}</p>}
       {action && <div className="mt-4 w-full">{action}</div>}
     </div>
   )

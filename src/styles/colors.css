@@ -1,0 +1,68 @@
+/* Figma Color 시스템. 원색(Primitives)은 클래스로 만들지 않고, 화면에는 용도별 토큰만 쓴다(bg-bg-default, text-text-primary). */
+:root {
+  --green-50: #f2f9f5;
+  --green-100: #ecf6f0;
+  --green-200: #d7eddf;
+  --green-400: #7fc499;
+  --green-500: #72b08a;
+  --green-600: #669d7a;
+  --green-700: #5f9373;
+  --green-800: #4c765c;
+  --green-900: #395845;
+  --green-950: #2c4536;
+
+  --gray-0: #ffffff;
+  --gray-50: #fafafa;
+  --gray-100: #f6f6f6;
+  --gray-150: #f1f1f1;
+  --gray-200: #e2e2e2;
+  --gray-400: #a3a3a3;
+  --gray-500: #828282;
+  --gray-600: #656565;
+  --gray-900: #242424;
+  --gray-1000: #000000;
+
+  --orange-50: #ffe6e0;
+  --orange-500: #ff5631;
+  --blue-50: #e6f4fc;
+  --blue-500: #4692be;
+}
+
+@theme inline {
+  --color-bg-default: var(--gray-50);
+  --color-bg-surface: var(--gray-0);
+  --color-bg-subtle: var(--gray-150);
+  --color-bg-field: var(--gray-100);
+  --color-bg-inverse: var(--gray-900); /* 어두운 토스트 (Figma Toast Dark) */
+
+  --color-text-primary: var(--gray-900);
+  --color-text-body: var(--gray-600);
+  --color-text-secondary: var(--gray-500);
+  --color-text-tertiary: var(--gray-400);
+  --color-text-on-brand: var(--gray-100);
+
+  --color-border-default: var(--gray-200);
+  --color-border-subtle: var(--gray-150);
+
+  --color-brand-primary: var(--green-400);
+  --color-brand-pressed: var(--green-500);
+  --color-brand-strong: var(--green-800);
+  --color-brand-subtle: var(--green-100);
+  --color-brand-disabled: var(--green-200);
+
+  --color-status-recording-bg: var(--green-100);
+  --color-status-recording: var(--green-400);
+  --color-status-away-bg: var(--orange-50);
+  --color-status-away: var(--orange-500);
+  --color-status-info-bg: var(--blue-50);
+  --color-status-info: var(--blue-500);
+
+  --color-overlay-dim: #0000008c;
+
+  --color-icon-primary: var(--gray-900);
+  --color-icon-secondary: var(--gray-500);
+  --color-icon-tertiary: var(--gray-400);
+  --color-icon-brand: var(--green-400);
+  --color-icon-brand-strong: var(--green-800);
+  --color-icon-on-brand: var(--gray-0);
+}

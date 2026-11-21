@@ -7,10 +7,10 @@
 `src/features/home` 이 가장 작은 본보기다. 새 기능은 `src/features/{이름}/` 에 같은 구성으로 만든다.
 
 - **서버 호출**. `features/{이름}/api.ts` 에 타입과 React Query 훅(`useQuery`, `useMutation`)을 만들고, 훅 안에서 `lib/api.ts` 의 `api.get/post/put/patch/delete` 를 쓴다. 변경이 성공하면 관련 쿼리를 `invalidateQueries` 한다.
-- **화면 틀**. 모든 화면은 `Screen` 으로 감싼다. 주요 버튼은 `footer` 에 둔다.
+- **화면 틀**. 모바일 폭(최대 402px) 틀은 `src/App.tsx` 에 있다. 화면은 맨 위에 `@/shared/Header` 를 두고, 내용은 `<main className="min-h-0 flex-1 overflow-y-auto">` 안에 둔다. 공통 컴포넌트는 `src/shared` 에 있다.
 - **세 가지 상태**. 데이터를 불러오는 화면은 `LoadingView`, `EmptyView`, `ErrorView` 를 모두 그린다. `ErrorView` 에는 `onRetry` 를 넘긴다.
 - **변경 요청**. 버튼에 `loading` 을 넘겨 중복 요청을 막고, 실패하면 `ApiError.message` 를 화면에 보여 준다.
-- **스타일**. Tailwind 클래스를 쓰고, 색과 폰트는 `src/index.css` 의 `@theme` 토큰(`bg-primary`, `text-sub`)으로 쓴다. 새 색은 토큰에 먼저 추가한다.
+- **스타일**. Tailwind 클래스를 쓰고, 색과 글자는 `src/styles` 의 `@theme` 토큰으로 쓴다. 색은 `colors.css` 의 용도별 토큰(`bg-bg-default`, `text-text-primary`, `bg-brand-primary`)을 쓰고 원색(`--green-400`)은 직접 쓰지 않는다. 글자는 `typography.css` 의 토큰(`text-title-l`, `text-body-m-medium`)을 쓴다. 새 색은 토큰에 먼저 추가한다.
 - **라우트**. `src/App.tsx` 의 `Routes` 에 추가한다. 화면 이동은 `Link` 와 `useNavigate` 를 쓴다.
 - **상태**. 서버 데이터는 React Query, 입력값은 `useState` 로 다룬다.
 - **컴포넌트 작성**. 컴포넌트와 훅은 `export const Button = ({ ... }: ButtonProps) => { ... }` 처럼 화살표 함수로 선언한다. 파일 하나에는 컴포넌트를 하나만 두고, 파일 이름을 컴포넌트 이름과 같게 한다. 작은 하위 컴포넌트도 파일을 나눈다.
@@ -47,7 +47,7 @@
 - 앱에서는 `https` 주소만 호출된다. 배포된 웹은 서버와 같은 origin이라 `/api/...` 상대 경로로 부르고, 로컬 개발에서만 `VITE_API_BASE_URL` 로 서버 주소를 준다.
 - `HashRouter` 를 쓴다. 주소는 `/#/경로` 형태다.
 - React Router는 `react-router` 패키지에서 import 한다 (`react-router-dom` 아님).
-- Tailwind 4다. 설정 파일 없이 `src/index.css` 의 `@theme` 으로 토큰을 정의한다.
+- Tailwind 4다. 설정 파일 없이 `src/styles/*.css` 의 `@theme` 으로 토큰을 정의하고 `src/index.css` 에서 import 한다.
 - `dev` 에 합쳐지면 dev 서버에, `main` 에 합쳐지면 운영에 바로 배포된다. 작업은 `feat/작업명` 브랜치에서 하고 base를 `dev` 로 해서 PR로 합친다.
 - 커밋은 기능 단위로 나누고 `feat: 타이머 화면 추가` 형식을 쓴다.
 
