@@ -15,9 +15,11 @@ export const InvitePage = () => {
   const navigate = useNavigate();
   const { code, session } = useCurrentSession();
   const [invited, setInvited] = useState(false);
-  useSessionSync();
+  const { gone } = useSessionSync();
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
+  // 방이 끝났거나 내 자리가 없어졌으면 더 기다릴 수 없다
+  if (gone) return <Navigate to={`/s/${code}/closed`} replace />;
 
   // TODO(mock): 서버가 아직 세션의 사진과 조각 수를 주지 않아서 초대 링크에 실어 보낸다
   const extra = new URLSearchParams({ pieces: String(session.pieceCount) });

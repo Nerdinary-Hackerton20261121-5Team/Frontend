@@ -13,12 +13,20 @@ type Draft = {
   memberCount: number;
   pieceCount: number;
   goalMinutes: number;
+  /** 방 만들기 요청 ID. 서버에 보내는 값(인원, 목표 시간)이 바뀌기 전까지 같은 값을 다시 쓴다 */
+  requestId: string;
 };
 
 /** 초대 링크에 실려 온 값. 서버가 아직 세션의 사진과 조각 수를 주지 않아 링크로 넘긴다 */
 export type Invite = { photoUrl: string | null; pieceCount: number | null };
 
-const EMPTY_DRAFT: Draft = { photoUrl: null, memberCount: 6, pieceCount: 12, goalMinutes: 50 };
+const freshDraft = (): Draft => ({
+  photoUrl: null,
+  memberCount: 6,
+  pieceCount: 12,
+  goalMinutes: 50,
+  requestId: crypto.randomUUID(),
+});
 const EMPTY_TIMELINE: Timeline = { elapsed: 0, focused: 0, away: 0, hidden: 0, paused: 0 };
 const FRESH = { timeline: EMPTY_TIMELINE, paused: false, placed: [], lastPlacedBy: null };
 
@@ -90,18 +98,35 @@ const started = (session: Session): Session => ({
 export const useSessionStore = create<SessionStore>()(
   persist(
     (set, get) => ({
-      draft: EMPTY_DRAFT,
+      draft: freshDraft(),
       session: null,
       ...FRESH,
 
       setPhoto: (photoUrl) => set((state) => ({ draft: { ...state.draft, photoUrl } })),
 
       // 하나씩 바꾼다. 둘을 함께 받으면 빠르게 이어 누를 때 앞에서 고른 값이 옛 값으로 덮인다
-      setMemberCount: (memberCount) => set((state) => ({ draft: { ...state.draft, memberCount } })),
+      // 서버에 보내는 값이 바뀌면 다른 방이므로 요청 ID 도 새로 만든다
+      setMemberCount: (memberCount) =>
+        set((state) => ({
+          draft: {
+            ...state.draft,
+            memberCount,
+            requestId:
+              memberCount === state.draft.memberCount ? state.draft.requestId : crypto.randomUUID(),
+          },
+        })),
 
       setPieceCount: (pieceCount) => set((state) => ({ draft: { ...state.draft, pieceCount } })),
 
-      setDraftGoal: (goalMinutes) => set((state) => ({ draft: { ...state.draft, goalMinutes } })),
+      setDraftGoal: (goalMinutes) =>
+        set((state) => ({
+          draft: {
+            ...state.draft,
+            goalMinutes,
+            requestId:
+              goalMinutes === state.draft.goalMinutes ? state.draft.requestId : crypto.randomUUID(),
+          },
+        })),
 
       openAsHost: (entry) => {
         const { draft } = get();
@@ -288,7 +313,7 @@ export const useSessionStore = create<SessionStore>()(
             : { placed: [...state.placed, index], lastPlacedBy: by },
         ),
 
-      reset: () => set({ draft: EMPTY_DRAFT, session: null, ...FRESH }),
+      reset: () => set({ draft: freshDraft(), session: null, ...FRESH }),
     }),
     { name: 'session', storage: createJSONStorage(() => sessionStorage) },
   ),

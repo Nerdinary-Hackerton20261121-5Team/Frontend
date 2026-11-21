@@ -10,9 +10,11 @@ import { useSessionSync } from '../useSessionSync';
 export const GoalPage = () => {
   const navigate = useNavigate();
   const { code, session } = useCurrentSession();
-  useSessionSync();
+  const { gone } = useSessionSync();
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
+  // 방이 끝났거나 내 자리가 없어졌으면 더 기다릴 수 없다
+  if (gone) return <Navigate to={`/s/${code}/closed`} replace />;
 
   return (
     <StepLayout

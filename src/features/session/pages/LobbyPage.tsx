@@ -19,7 +19,7 @@ export const LobbyPage = () => {
   const start = useSessionStore((state) => state.start);
   const startOnServer = useStartSession();
   const [renaming, setRenaming] = useState(false);
-  useSessionSync();
+  const { gone } = useSessionSync();
 
   const me = session?.members.find((member) => member.isMe);
   const joined = session?.members.filter((member) => member.joined).length ?? 0;
@@ -36,6 +36,8 @@ export const LobbyPage = () => {
   }, [guestWaiting, start]);
 
   if (!session || !me) return <Navigate to={`/s/${code}`} replace />;
+  // 방이 끝났거나 내 자리가 없어졌으면 더 기다릴 수 없다
+  if (gone) return <Navigate to={`/s/${code}/closed`} replace />;
   if (session.phase !== 'lobby') return <Navigate to={`/s/${code}/study`} replace />;
 
   // 서버 세션이면 서버에서 먼저 시작하고, 성공하면 화면을 넘긴다
