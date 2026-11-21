@@ -57,7 +57,7 @@
 
 ### 브랜치·PR
 
-- 흐름은 **기능 브랜치 → PR(base `dev`) → `dev` → `dev`→`main` PR → `main`** 이다. `dev`·`main` 에 직접 push하지 않는다. `dev` 에서 딴 `feat/작업명`, `fix/작업명`, `docs/작업명` 브랜치에서 작업하고 **base를 `dev` 로 해서 PR**을 연다(GitHub 기본 브랜치가 `dev` 다). force push·rebase로 공유 이력을 고치지 않는다.
+- 흐름은 **기능 브랜치 → PR(base `dev`) → `dev` → `dev`→`main` PR → `main`** 이다. `dev` 에서 딴 `feat/작업명`, `fix/작업명`, `docs/작업명` 브랜치에서 작업하고 **base를 `dev` 로 해서 PR**을 여는 것을 기본으로 한다(PR은 권장이고, GitHub 기본 브랜치가 `dev` 다). `dev`·`main` 모두 PR 승인은 필요 없다. 보호 규칙은 force push·브랜치 삭제 금지뿐이므로 force push·rebase로 공유 이력을 고치지 않고 브랜치를 지우지 않는다.
 - 운영 반영은 dev 서버에서 확인한 뒤 `dev`→`main` PR을 여는 것으로만 한다. 이 PR에는 `dev` 에만 있는 커밋이 모두 실리니 머지 전에 커밋 목록·diff를 확인한다.
 - 커밋은 기능 단위로 나누고 `종류: 내용` 형식(`feat`·`fix`·`style`·`refactor`·`chore`·`docs`)을 쓴다. PR 본문은 `.github/pull_request_template.md` 양식을 채우고 관련 이슈는 `closes #번호` 로 잇는다.
 - PR을 열기 전에 `npm run lint` 와 `npm run build` 를 통과시킨다. 같은 검사(`CI`)가 PR에서 자동으로 돌고, 팀원 한 명이 확인한 뒤 합친다.
