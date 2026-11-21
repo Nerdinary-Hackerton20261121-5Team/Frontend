@@ -48,7 +48,7 @@ export const DoneView = ({
   const boardWidth = aspect ? Math.max(size.width, size.height * aspect) : size.width;
   const boardHeight = aspect ? boardWidth / aspect : size.height;
   const myBlur = (boardWidth / grid.cols) * blurRatio(myRestoration);
-  const myFilter = pieceImages && boardWidth > 0 ? 'url(#done-my-blur)' : undefined;
+  const myFilter = pieceImages && myBlur > 0 ? 'url(#done-my-blur)' : undefined;
 
   return (
     <div ref={frameRef} className='relative min-h-0 flex-1 overflow-hidden bg-bg-inverse'>
