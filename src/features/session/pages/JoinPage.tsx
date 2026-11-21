@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate } from 'react-router';
+import { ErrorView } from '@/components/ErrorView';
 import { LoadingView } from '@/components/LoadingView';
+import { ApiError } from '@/lib/api';
 import { Button } from '@/shared/Button';
 import { Input } from '@/shared/Input';
-import { leaveSession, shouldUseMock, useJoinSession, useSetNickname } from '../api';
+import { leaveSession, useJoinSession, useSetNickname } from '../api';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { JigsawBoard } from '../components/JigsawBoard';
@@ -32,9 +34,7 @@ export const JoinPage = () => {
   useEffect(() => {
     if (session) return;
     if (join.data) openAsGuest(code, join.data);
-    // TODO(mock): 세션 API 가 없는 서버에서는 흉내 낸 세션으로 들어간다
-    else if (join.error && shouldUseMock(join.error)) openAsGuest(code, null);
-  }, [session, join.data, join.error, code, openAsGuest]);
+  }, [session, join.data, code, openAsGuest]);
 
   // 잡아 둔 자리가 서버에서 없어졌으면(나갔다가 돌아온 경우 등) 비우고 다시 입장한다
   useEffect(() => {
@@ -51,7 +51,7 @@ export const JoinPage = () => {
       const me = current?.members.find((member) => member.isMe);
       const holding =
         current?.code === code && current.phase === 'lobby' && me !== undefined && me.name === '';
-      if (!holding || !current.remote || current.remote.isCreator) return false;
+      if (!holding || current.remote.isCreator) return false;
       // 실패해도 화면은 떠나야 하므로 결과를 기다리지 않는다
       void leaveSession(current.remote, keepalive).catch(() => undefined);
       return true;
@@ -74,7 +74,10 @@ export const JoinPage = () => {
   }, [code, queryClient, reset]);
 
   // 없는 코드, 이미 시작한 방, 정원이 찬 방은 들어갈 수 없다
-  if (!session && join.error && !shouldUseMock(join.error)) {
+  if (!session && join.error) {
+    // 서버에 닿지 못했거나 서버 오류면 다시 시도하게 하고, 그 밖에는 들어갈 수 없는 세션으로 안내한다
+    const retryable = join.error instanceof ApiError && [0, 500].includes(join.error.status);
+    if (retryable) return <ErrorView message={join.error.message} onRetry={() => join.refetch()} />;
     return <Navigate to={`/s/${code}/closed`} replace />;
   }
   if (!session) return <LoadingView />;
@@ -87,7 +90,7 @@ export const JoinPage = () => {
 
   const next = () => {
     rename(trimmed);
-    if (session.remote) setNickname.mutate({ remote: session.remote, nickname: trimmed });
+    setNickname.mutate({ remote: session.remote, nickname: trimmed });
     navigate(`/s/${code}/goal`);
   };
 
