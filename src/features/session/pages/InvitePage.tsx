@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Avatar } from '@/shared/Avatar';
 import { Button } from '@/shared/Button';
-import { Input } from '@/shared/Input';
-import { InputButton } from '@/shared/InputButton';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
+import { InviteLinkField } from '../components/InviteLinkField';
 import { StepLayout } from '../components/StepLayout';
+import { copyInviteLink, inviteLink } from '../inviteLink';
 import { useCurrentSession } from '../useCurrentSession';
 import { useSessionSync } from '../useSessionSync';
 
@@ -21,22 +21,15 @@ export const InvitePage = () => {
   // 방이 끝났거나 내 자리가 없어졌으면 더 기다릴 수 없다
   if (gone) return <Navigate to={`/s/${code}/closed`} replace />;
 
-  const link = `${window.location.origin}${window.location.pathname}#/s/${code}`;
   const joined = session.members.filter((member) => member.joined).length;
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setInvited(true);
-    } catch {
-      // 복사를 막아 둔 브라우저에서는 링크 칸을 길게 눌러 직접 복사할 수 있다
-    }
-  };
-
   const share = async () => {
-    if (!navigator.share) return copy();
+    if (!navigator.share) {
+      if (await copyInviteLink(code)) setInvited(true);
+      return;
+    }
     try {
-      await navigator.share({ title: '공부 세션에 초대됐어요', url: link });
+      await navigator.share({ title: '공부 세션에 초대됐어요', url: inviteLink(code) });
       setInvited(true);
     } catch {
       // 공유 창을 그냥 닫은 경우다
@@ -66,14 +59,7 @@ export const InvitePage = () => {
       }
     >
       <div className='flex flex-col gap-7'>
-        <Field label='초대 링크'>
-          <Input
-            readOnly
-            value={link.replace(/^https?:\/\//, '')}
-            aria-label='초대 링크'
-            action={<InputButton onClick={copy}>{invited ? '복사됨' : '복사'}</InputButton>}
-          />
-        </Field>
+        <InviteLinkField code={code} onCopied={() => setInvited(true)} />
         <Field
           label={
             <>

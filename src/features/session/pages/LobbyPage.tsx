@@ -4,6 +4,7 @@ import { Button } from '@/shared/Button';
 import { MemberRow } from '@/shared/MemberRow';
 import { StatusChip } from '@/shared/StatusChip';
 import { Accent } from '../components/Accent';
+import { InviteLinkField } from '../components/InviteLinkField';
 import { RenameSheet } from '../components/RenameSheet';
 import { StepLayout } from '../components/StepLayout';
 import { EARLY_START_MIN } from '../limits';
@@ -86,12 +87,14 @@ export const LobbyPage = () => {
             <p className='text-center text-caption-medium text-text-tertiary'>
               {EARLY_START_MIN}명 이상이면 개설자가 지금 인원으로 먼저 시작할 수도 있어요
             </p>
-            <Button disabled>모두 모이면 자동으로 시작돼요</Button>
+            <Button disabled>개설자가 시작하면 함께 시작돼요</Button>
           </>
         )
       }
     >
       <div className='flex flex-col gap-3'>
+        {/* 초대 화면을 지난 뒤에도 링크를 다시 보낼 수 있게 한다 */}
+        {me.isHost && !full && <InviteLinkField code={code} />}
         {session.members.map((member) =>
           member.isMe ? (
             <MemberRow

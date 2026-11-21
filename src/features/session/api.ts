@@ -111,8 +111,9 @@ export const useCreateSession = () => {
         );
         return { entry, photoUrl: image.url };
       } catch {
-        // 방은 만들어졌으니 사진 없이 이어 간다. 만든 사람은 고른 사진을 그대로 본다
-        return { entry, photoUrl: null };
+        // 방은 만들어졌다. 다시 누르면 같은 요청 ID 라 그 방을 돌려받고 사진만 다시 올린다.
+        // ApiError 로 던지면 서버가 없는 경우로 읽혀 흉내 낸 세션으로 넘어가므로 일반 오류로 던진다
+        throw new Error('사진을 올리지 못했어요. 다시 시도하거나 다른 사진을 골라 주세요.');
       }
     },
   });
