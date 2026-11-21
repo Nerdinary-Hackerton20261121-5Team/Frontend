@@ -80,14 +80,14 @@ src
 ```
 main 에 합쳐짐
   └─ .github/workflows/deploy.yml
-       ├─ Dockerfile 로 이미지 빌드 (linux/amd64) → ghcr.io/nerdinary-hackerton20261121-5team/frontend:<커밋 sha>
+       ├─ Dockerfile 로 이미지 빌드 (linux/amd64) → registry.bemelon.me/cmc-11th/frontend:<커밋 sha>
        └─ cluster-config 의 deploy-image 호출 (app=fe) → 이미지 태그 커밋 "deploy(fe): ..."
 Argo CD 가 그 커밋을 감지해 롤링 업데이트
 ```
 
 - 이미지는 `node:22-alpine` 에서 빌드한 정적 파일을 `nginx:1.27-alpine` 이 80 포트로 서빙합니다. 설정은 `deploy/nginx.conf` 이고, 없는 경로는 `index.html` 로 보냅니다.
 - 같은 origin이라 이 빌드에서는 `VITE_API_BASE_URL` 을 빈 값으로 두고 `/api/...` 를 부릅니다. gateway가 `/api` 는 서버로, 나머지는 FE로 보냅니다.
-- `main` 이 아닌 브랜치에서는 배포되지 않습니다. 배포 워크플로는 `CLUSTER_CONFIG_DEPLOY_KEY` 레포 secret을 씁니다.
+- `main` 이 아닌 브랜치에서는 배포되지 않습니다. 배포 워크플로는 레포 secret `ZOT_USERNAME`·`ZOT_PASSWORD`(운영자 사설 레지스트리 `registry.bemelon.me`, CI 계정은 `cmc-11th/*` 에만 push)와 `CLUSTER_CONFIG_DEPLOY_KEY` 를 씁니다. 레이어 하나가 100MB를 넘으면 push가 `413`으로 실패하니(Cloudflare 한도) 큰 파일을 이미지에 넣지 않습니다.
 - 되돌릴 때는 [cluster-config](https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config) 에서 해당 `deploy(fe)` 커밋을 revert 합니다.
 - 로컬에서 이미지를 확인하려면 `docker build --platform linux/amd64 -t frontend .` 후 `docker run -p 8080:80 frontend` 를 실행합니다.
 

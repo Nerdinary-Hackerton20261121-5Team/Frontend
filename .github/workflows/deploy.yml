@@ -1,12 +1,13 @@
-# 홈서버(k3s) 자동 배포: main에 push(병합)되면 이미지를 만들어 ghcr에 올리고,
+# 홈서버(k3s) 자동 배포: main에 push(병합)되면 이미지를 만들어 운영자 Zot 레지스트리(registry.bemelon.me)에 올리고,
 # cluster-config 레포의 이미지 태그를 갱신한다. 이후 Argo CD가 그 커밋을 감지해 클러스터에 반영한다.
 # Vercel 배포(APK가 띄우는 주소)는 이 워크플로와 무관하게 그대로 동작한다.
 #
-#   main push → docker build (linux/amd64) → ghcr.io/<owner>/<repo>:<sha> push
+#   main push → docker build (linux/amd64) → registry.bemelon.me/cmc-11th/frontend:<sha> push
 #            → cluster-config deploy-image 호출 (app=fe) → 커밋 "deploy(fe): <image>"
 #            → Argo CD 롤링 업데이트 → https://cmc-11th.bemelon.me
 #
-# 필요한 것: 레포 secret CLUSTER_CONFIG_DEPLOY_KEY (secrets: inherit 로 전달)
+# 필요한 것: 레포 secret ZOT_USERNAME·ZOT_PASSWORD (Zot 계정 cmc-11th-ci, cmc-11th/** 에만 push 가능),
+#           CLUSTER_CONFIG_DEPLOY_KEY (secrets: inherit 로 전달)
 # 롤백: cluster-config 레포에서 해당 deploy(fe) 커밋을 revert
 name: Deploy
 
@@ -27,7 +28,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      packages: write
     outputs:
       image: ${{ steps.meta.outputs.image }}
     steps:
@@ -35,15 +35,15 @@ jobs:
 
       - name: Image name
         id: meta
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        run: echo "image=registry.bemelon.me/cmc-11th/frontend:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: registry.bemelon.me
+          username: ${{ secrets.ZOT_USERNAME }}
+          password: ${{ secrets.ZOT_PASSWORD }}
 
       - uses: docker/build-push-action@v6
         with:
