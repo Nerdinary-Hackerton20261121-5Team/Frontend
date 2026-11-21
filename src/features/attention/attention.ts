@@ -15,6 +15,8 @@ export type AttentionSample = {
   pitch: number;
   /** 고개를 숙인 정도. 눈과 턱 사이에서 코끝이 어디쯤인지의 비율이고, 숙일수록 커진다 */
   down: number;
+  /** 얼굴 크기. 두 눈 사이가 화면 폭에서 차지하는 비율 */
+  span: number;
 } | null;
 
 export type AttentionConfig = {
@@ -36,7 +38,7 @@ export const DEFAULT_ATTENTION_CONFIG: AttentionConfig = {
   yawLimit: 35,
   yawReturn: 25,
   awaySeconds: 5,
-  absentSeconds: 3,
+  absentSeconds: 5,
   bowedMargin: 0.08,
   bowedSeconds: 90,
 };
@@ -51,8 +53,19 @@ export type AttentionStatus = {
 
 /** 기준 자세가 지금 자세를 따라가는 빠르기. 고쳐 앉아도 수십 초 안에 새 자세가 기준이 된다 */
 const BASELINE_RATE = 0.05;
+/**
+ * 숙인 정도의 기준은 가장 꼿꼿했던 자세에 맞춘다. 더 꼿꼿해지면 빨리, 숙이는 쪽으로는 아주 느리게만 따라간다.
+ * 책을 오래 보는 동안 기준이 숙인 자세로 옮겨 가면 그 뒤로는 숙인 것을 알아보지 못하기 때문이다.
+ */
+const UPRIGHT_RATE = 0.2;
+const BOWING_RATE = 0.0005;
 
 // 얼굴 그물망에서 쓰는 점 번호
+/** 한 장면에서 찾는 얼굴 수 */
+const MAX_FACES = 3;
+/** 두 눈 사이가 화면 폭의 이 비율보다 좁으면 멀리 있는 다른 사람으로 보고 무시한다 */
+const MIN_FACE_SPAN = 0.07;
+
 const NOSE_TIP = 1;
 const CHIN = 152;
 const LEFT_EYE_OUTER = 33;
@@ -69,7 +82,8 @@ export const loadAttention = () => {
       FaceLandmarker.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: modelUrl, delegate },
         runningMode: 'VIDEO',
-        numFaces: 1,
+        // 뒤에 다른 사람이 지나가도 가장 가까운 얼굴을 고를 수 있게 여러 개를 찾는다
+        numFaces: MAX_FACES,
         outputFacialTransformationMatrixes: true,
       });
     try {
@@ -91,9 +105,25 @@ export const sampleAttention = (
   video: HTMLVideoElement,
 ): AttentionSample => {
   const result = landmarker.detectForVideo(video, performance.now());
-  const points = result.faceLandmarks[0];
-  const matrix = result.facialTransformationMatrixes?.[0]?.data;
-  if (!points || !matrix) return null;
+  const { videoWidth, videoHeight } = video;
+
+  // 카메라에 가장 크게 잡힌 얼굴이 공부하는 사람이다
+  let face = -1;
+  let span = 0;
+  result.faceLandmarks.forEach((candidate, index) => {
+    const width =
+      Math.hypot(
+        (candidate[LEFT_EYE_OUTER].x - candidate[RIGHT_EYE_OUTER].x) * videoWidth,
+        (candidate[LEFT_EYE_OUTER].y - candidate[RIGHT_EYE_OUTER].y) * videoHeight,
+      ) / videoWidth;
+    if (width > span) {
+      span = width;
+      face = index;
+    }
+  });
+  const points = result.faceLandmarks[face];
+  const matrix = result.facialTransformationMatrixes?.[face]?.data;
+  if (!points || !matrix || span < MIN_FACE_SPAN) return null;
 
   // 4x4 변환 행렬(열 우선)의 셋째 열이 얼굴이 향하는 방향이다
   const toDegrees = 180 / Math.PI;
@@ -101,7 +131,6 @@ export const sampleAttention = (
   const pitch = Math.atan2(-matrix[9], Math.hypot(matrix[8], matrix[10])) * toDegrees;
 
   // 고개를 숙이면 튀어나온 코끝이 눈에서 턱 쪽으로 내려와 보인다. 고개를 기울여도 같게 나오도록 눈-턱 축에 투영한다
-  const { videoWidth, videoHeight } = video;
   const at = (index: number) => ({
     x: points[index].x * videoWidth,
     y: points[index].y * videoHeight,
@@ -115,7 +144,7 @@ export const sampleAttention = (
   const length = axis.x * axis.x + axis.y * axis.y;
   const down = length > 0 ? ((nose.x - eyes.x) * axis.x + (nose.y - eyes.y) * axis.y) / length : 0;
 
-  return { yaw, pitch, down };
+  return { yaw, pitch, down, span };
 };
 
 /** 판정 결과를 시각과 함께 이어 받아 지금 상태를 정한다. */
@@ -168,7 +197,9 @@ export const createAttentionTracker = (config: AttentionConfig = DEFAULT_ATTENTI
       attention = 'present';
       // 공부하는 자세일 때만 기준을 옮긴다. 다른 곳을 보는 자세가 기준이 되면 안 된다
       baselineYaw += rate * (sample.yaw - baselineYaw);
-      baselineDown += rate * (sample.down - baselineDown);
+      const downRate = sample.down < baselineDown ? UPRIGHT_RATE : BOWING_RATE;
+      // 처음 세 번만 평균으로 빨리 잡는다
+      baselineDown += (seen <= 3 ? 1 / seen : downRate) * (sample.down - baselineDown);
     }
     return { attention, bowed, baselineYaw };
   };

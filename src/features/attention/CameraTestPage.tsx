@@ -136,6 +136,7 @@ export const CameraTestPage = () => {
     ],
     ['고개 상하 각도 (참고)', degrees(sample?.pitch)],
     ['숙인 정도 (클수록 숙임)', sample ? sample.down.toFixed(2) : '-'],
+    ['얼굴 크기 (0.07 미만은 무시)', sample ? sample.span.toFixed(2) : '-'],
     ['판정 한 번에 걸린 시간', reading ? `${reading.elapsed.toFixed(0)}ms` : '-'],
     ['판정 횟수 (1초에 한 번)', String(count)],
   ];
