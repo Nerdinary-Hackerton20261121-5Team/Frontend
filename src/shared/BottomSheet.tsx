@@ -22,6 +22,16 @@ export const BottomSheet = ({ open, onClose, title, children, className }: Botto
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [open, onClose]);
 
+  // 시트가 열려 있는 동안 뒤 화면이 같이 스크롤되지 않게 막는다.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -32,12 +42,13 @@ export const BottomSheet = ({ open, onClose, title, children, className }: Botto
         aria-modal='true'
         aria-label={title}
         className={cn(
-          'flex flex-col items-center gap-[14px] rounded-t-[20px] bg-bg-default px-5 pt-3 pb-[max(48px,calc(env(safe-area-inset-bottom)+14px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)]',
+          'flex max-h-[90dvh] flex-col items-center gap-[14px] rounded-t-[20px] bg-bg-default px-5 pt-3 pb-[max(48px,calc(env(safe-area-inset-bottom)+14px))] shadow-[0_-4px_16px_rgba(0,0,0,0.04)]',
           className,
         )}
       >
         <div className='h-1 w-10 shrink-0 rounded-[2px] bg-border-default' />
-        <div className='flex w-full flex-col gap-3'>
+        {/* 내용이 길면 이 안에서 스크롤한다. 바깥 여백은 안쪽 그림자가 잘리지 않게 넓힌 것이다. */}
+        <div className='-mx-5 -mt-2 -mb-4 flex min-h-0 flex-col gap-3 self-stretch overflow-y-auto overscroll-contain px-5 pt-2 pb-4'>
           {title && <h2 className='text-title-m text-text-primary'>{title}</h2>}
           {children}
         </div>
