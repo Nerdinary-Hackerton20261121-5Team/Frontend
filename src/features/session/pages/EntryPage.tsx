@@ -5,6 +5,7 @@ import shadow from '@/assets/images/entry-shadow.svg';
 import { useCameraStore } from '@/features/attention/camera';
 import { Button } from '@/shared/Button';
 import { Accent } from '../components/Accent';
+import { JoinSheet } from '../components/JoinSheet';
 import { SplashScreen } from '../components/SplashScreen';
 import { useSessionStore } from '../store';
 
@@ -13,12 +14,13 @@ const SPLASH_MS = 1500;
 // 앱을 연 뒤 처음 한 번만 보여 준다. 처음 화면으로 돌아올 때는 다시 띄우지 않는다
 let splashSeen = false;
 
-/** 01 진입. 앱을 처음 열면 초록 시작 화면을 잠깐 보여 주고, 서비스를 한 줄로 알리며 세션 만들기로 보낸다. */
+/** 01 진입. 앱을 처음 열면 초록 시작 화면을 잠깐 보여 주고, 서비스를 한 줄로 알리며 세션 참여나 세션 만들기로 보낸다. */
 export const EntryPage = () => {
   const navigate = useNavigate();
   const reset = useSessionStore((state) => state.reset);
   const stopCamera = useCameraStore((state) => state.stop);
   const [splash, setSplash] = useState(!splashSeen);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   // 처음으로 돌아왔으면 이전 세션을 비우고 켜 둔 카메라를 끈다
   useEffect(() => {
@@ -65,9 +67,13 @@ export const EntryPage = () => {
           />
         </div>
       </main>
-      <footer className='shrink-0 px-5 pt-2 pb-[calc(22px+env(safe-area-inset-bottom))]'>
+      <footer className='flex shrink-0 flex-col gap-4 px-5 pt-2 pb-[calc(22px+env(safe-area-inset-bottom))]'>
+        <Button variant='secondary' onClick={() => setJoinOpen(true)}>
+          세션 참여하기
+        </Button>
         <Button onClick={() => navigate('/new/photo')}>세션 만들기</Button>
       </footer>
+      {joinOpen && <JoinSheet onClose={() => setJoinOpen(false)} />}
     </>
   );
 };
