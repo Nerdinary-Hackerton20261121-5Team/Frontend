@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router';
+import { LoadingView } from '@/components/LoadingView';
 import { useCameraStore } from '@/features/attention/camera';
-import { useAssembly, useBoard, useEndSession, usePlacePiece } from '../api';
+import { useAssembly, useBoard, useEndSession, usePieceImages, usePlacePiece } from '../api';
 import { AssemblyView } from '../components/AssemblyView';
 import { DoneView } from '../components/DoneView';
 import { useMockAssembly } from '../mock';
@@ -38,6 +39,17 @@ export const ResultPage = () => {
   // 서버 세션이면 조립판을 서버에서 읽는다. 다른 사람이 끼운 조각과 완성 여부가 여기로 들어온다
   const remote = session?.remote ?? null;
   const assembly = useAssembly(remote, session?.phase === 'assembly');
+  // 서버가 오려 준 조각 그림. 칸 번호(1부터)를 조각 번호(0부터)로 바꿔 둔다
+  const images = usePieceImages(
+    remote,
+    board.data?.hasImage ? board.data.pieces.map((piece) => piece.position) : [],
+    session?.phase === 'assembly' ? 'assembly' : null,
+  );
+  const pieceImages = images.data
+    ? Object.fromEntries(
+        Object.entries(images.data.urls).map(([position, url]) => [Number(position) - 1, url]),
+      )
+    : undefined;
   const myName = session?.members.find((member) => member.isMe)?.name ?? '';
   const myPositions = session?.myPositions ?? null;
   useEffect(() => {
@@ -55,6 +67,10 @@ export const ResultPage = () => {
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
   if (session.phase === 'study') return <Navigate to={`/s/${code}/study`} replace />;
+  // 서버 조각 그림을 받기 전에 그리면 판 모양이 한 번 바뀌어 보인다. 다 받은 뒤에 그린다
+  if (remote && (board.isPending || (board.data?.hasImage && images.isPending))) {
+    return <LoadingView />;
+  }
 
   // 서버 세션은 서버가 알려 준 판 크기와 내 칸을 쓴다
   const grid = assembly.data
@@ -65,6 +81,7 @@ export const ResultPage = () => {
     ? myPositions.map((position) => position - 1)
     : piecesOfRow(myRow, grid);
   const completed = assembly.data?.completed ?? placed.length === pieceTotal(grid);
+  const boardAspect = images.data ? (images.data.cellAspect * grid.cols) / grid.rows : undefined;
 
   const onPlace = (index: number) => {
     if (!remote) return placePiece(index, myName);
@@ -84,6 +101,9 @@ export const ResultPage = () => {
         session={session}
         grid={grid}
         timeline={timeline}
+        pieceImages={pieceImages}
+        padRatio={board.data?.padRatio}
+        aspect={boardAspect}
         ending={endSession.isPending}
         onHome={() => {
           // 세션은 진입 화면에 도착하면 비운다. 여기서 먼저 비우면 이 화면이 입장 화면으로 튕긴다
@@ -103,6 +123,9 @@ export const ResultPage = () => {
       timeline={timeline}
       placed={placed}
       myPieces={myPieces}
+      pieceImages={pieceImages}
+      padRatio={board.data?.padRatio}
+      aspect={boardAspect}
       lastPlacedBy={lastPlacedBy}
       onPlace={onPlace}
     />

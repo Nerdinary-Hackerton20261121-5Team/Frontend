@@ -3,7 +3,7 @@ import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
-import { useBoard, useHeartbeat } from '../api';
+import { useBoard, useHeartbeat, usePieceImages } from '../api';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
 import { SheetActions } from '../components/SheetActions';
@@ -57,6 +57,21 @@ export const StudyPage = () => {
   useEffect(() => {
     if (board.data) syncBoard(board.data.pieces);
   }, [board.data, syncBoard]);
+  // 서버가 오려 준 조각 그림. 공부 중에는 정답 칸이 드러나지 않게 서버가 섞어 준 칸에 놓는다
+  const images = usePieceImages(
+    session?.remote ?? null,
+    board.data?.hasImage ? board.data.pieces.map((piece) => piece.position) : [],
+    studying ? 'study' : null,
+  );
+  const pieceImages =
+    board.data && images.data
+      ? Object.fromEntries(
+          board.data.pieces.map((piece) => [
+            piece.displaySlot - 1,
+            images.data.urls[piece.position],
+          ]),
+        )
+      : undefined;
 
   useEffect(() => {
     if (!studying) return;
@@ -76,17 +91,17 @@ export const StudyPage = () => {
   const perPerson = gridFor(session.pieceCount, session.members.length).cols;
   const grid = studyGrid(pieceTotal(gridFor(session.pieceCount, session.members.length)));
   const myIndex = session.members.findIndex((member) => member.isMe);
-  // 서버 세션이면 서버가 정한 내 칸을 쓴다. 결과 화면에서 끼우는 칸과 같아진다
-  const owners = session.myPositions
-    ? ownersFromServer(
-        pieceTotal(grid),
-        session.myPositions,
-        myIndex,
-        session.members.length,
-        perPerson,
-      )
+  // 서버 세션이면 서버가 정한 내 칸을 쓴다. 조각 그림이 있으면 섞어 둔 칸을 따른다
+  const mySlots = pieceImages
+    ? (board.data?.pieces ?? []).filter((piece) => piece.isMine).map((piece) => piece.displaySlot)
+    : session.myPositions;
+  const owners = mySlots
+    ? ownersFromServer(pieceTotal(grid), mySlots, myIndex, session.members.length, perPerson)
     : pieceOwners(code, grid, perPerson);
   const me = session.members[myIndex];
+  // 서버 조각 그림을 받기 전에 그리면 정답 칸이 잠깐 드러난다. 다 받은 뒤에 그린다
+  const loadingPieces =
+    session.remote !== null && (board.isPending || (board.data?.hasImage && images.isPending));
   const showAway = away && !paused;
 
   return (
@@ -96,17 +111,21 @@ export const StudyPage = () => {
         className='relative mx-4 mt-[calc(14px+env(safe-area-inset-top))] min-h-0 flex-1 overflow-hidden bg-bg-inverse'
         style={{ borderRadius: BOARD_RADIUS }}
       >
-        <StudyBoard
-          width={size.width}
-          height={size.height}
-          grid={grid}
-          owners={owners}
-          members={session.members}
-          photoUrl={session.photoUrl}
-          myBlur={(1 - (me?.progress ?? 0)) * MAX_BLUR}
-          away={showAway}
-          radius={BOARD_RADIUS}
-        />
+        {!loadingPieces && (
+          <StudyBoard
+            width={size.width}
+            height={size.height}
+            grid={grid}
+            owners={owners}
+            members={session.members}
+            photoUrl={session.photoUrl}
+            pieceImages={pieceImages}
+            padRatio={board.data?.padRatio}
+            myBlur={(1 - (me?.progress ?? 0)) * MAX_BLUR}
+            away={showAway}
+            radius={BOARD_RADIUS}
+          />
+        )}
       </div>
       <StudyHud
         videoRef={videoRef}

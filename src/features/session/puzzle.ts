@@ -52,7 +52,17 @@ const side = (
 };
 
 /** 조각 하나의 테두리. 좌표는 판 전체 기준이다 */
-export const piecePath = (grid: Grid, index: number, cellW: number, cellH: number) => {
+/** 조각 네 변의 모양. 1 은 바깥으로 튀어나온 탭, -1 은 안으로 들어간 홈, 0 은 판의 테두리 */
+export type Edges = { top: number; right: number; bottom: number; left: number };
+
+export const piecePath = (
+  grid: Grid,
+  index: number,
+  cellW: number,
+  cellH: number,
+  /** 서버가 정한 모양. 없으면 조각 번호로 정한 모양을 쓴다 */
+  edges?: Edges,
+) => {
   const col = index % grid.cols;
   const row = Math.floor(index / grid.cols);
   const x0 = col * cellW;
@@ -61,10 +71,25 @@ export const piecePath = (grid: Grid, index: number, cellW: number, cellH: numbe
   const y1 = y0 + cellH;
   const radius = knobRadius(cellW, cellH);
 
-  const top = row > 0 ? { x: 0, y: direction(row, col) } : null;
-  const right = col < grid.cols - 1 ? { x: direction(col + 1, row + 5), y: 0 } : null;
-  const bottom = row < grid.rows - 1 ? { x: 0, y: direction(row + 1, col) } : null;
-  const left = col > 0 ? { x: direction(col, row + 5), y: 0 } : null;
+  // 탭은 조각 바깥쪽으로, 홈은 안쪽으로 둥근 돌기를 만든다
+  const bulge = (value: number, outX: number, outY: number) =>
+    value === 0 ? null : { x: outX * value, y: outY * value };
+  const top = edges ? bulge(edges.top, 0, -1) : row > 0 ? { x: 0, y: direction(row, col) } : null;
+  const right = edges
+    ? bulge(edges.right, 1, 0)
+    : col < grid.cols - 1
+      ? { x: direction(col + 1, row + 5), y: 0 }
+      : null;
+  const bottom = edges
+    ? bulge(edges.bottom, 0, 1)
+    : row < grid.rows - 1
+      ? { x: 0, y: direction(row + 1, col) }
+      : null;
+  const left = edges
+    ? bulge(edges.left, -1, 0)
+    : col > 0
+      ? { x: direction(col, row + 5), y: 0 }
+      : null;
 
   return [
     `M${x0} ${y0}`,

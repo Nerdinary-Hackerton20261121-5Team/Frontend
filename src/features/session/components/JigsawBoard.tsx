@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { cn } from '@/lib/cn';
 import { piecePath, pieceTotal } from '../puzzle';
-import type { Grid } from '../puzzle';
+import type { Edges, Grid } from '../puzzle';
 
 /** slot 빈 자리, brand 내 조각 표시, photo 사진이 보이는 조각, dim 어둡고 흐린 조각, none 그리지 않음 */
 export type PieceLook = 'slot' | 'brand' | 'photo' | 'dim' | 'none';
@@ -15,6 +15,8 @@ interface JigsawBoardProps {
   look: (index: number) => PieceLook;
   /** 조각 테두리의 색과 굵기를 정하는 클래스 */
   outlineClassName: (index: number) => string;
+  /** 서버가 정한 조각 모양. 없으면 조각 번호로 정한 모양을 쓴다 */
+  edges?: (index: number) => Edges | undefined;
   /** photo 조각을 얼마나 흐리게 할지(px) */
   photoBlur?: number;
   className?: string;
@@ -28,6 +30,7 @@ export const JigsawBoard = ({
   photoUrl,
   look,
   outlineClassName,
+  edges,
   photoBlur = 0,
   className,
 }: JigsawBoardProps) => {
@@ -37,7 +40,7 @@ export const JigsawBoard = ({
   const pieces = Array.from({ length: pieceTotal(grid) }, (_, index) => ({
     index,
     look: look(index),
-    d: piecePath(grid, index, cellW, cellH),
+    d: piecePath(grid, index, cellW, cellH, edges?.(index)),
   }));
   const of = (kind: PieceLook) => pieces.filter((piece) => piece.look === kind);
   // 강조한 테두리가 다른 조각의 테두리에 덮이지 않게 사진 조각을 마지막에 그린다
