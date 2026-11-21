@@ -64,6 +64,8 @@ src
 
 Back_End · Frontend · cluster-config 세 레포 README가 같은 표를 쓴다.
 
+인프라 전체 구성: https://github.com/Nerdinary-Hackerton20261121-5Team/cluster-config/blob/main/docs/INFRA.md
+
 | 항목 | 내용 |
 |---|---|
 | 서버 주소 | **dev** https://cmc-11th-dev.bemelon.me · **운영** https://cmc-11th.bemelon.me. 두 주소 모두 `/api/*`·`/docs*`는 BE로, 나머지는 FE로 가므로 FE와 API가 같은 origin이다 |
