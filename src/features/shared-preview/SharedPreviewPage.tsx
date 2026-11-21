@@ -7,6 +7,14 @@ import { Progress } from '@/shared/Progress';
 
 const STEPS = [1, 2, 3, 4];
 
+// Figma 대기실 화면의 예시 값
+const MEMBERS = [
+  { name: '홍길동(나)', status: '카메라 OK', waiting: false },
+  { name: '비둘기', status: '카메라 OK', waiting: false },
+  { name: '누렁이', status: '카메라 OK', waiting: false },
+  { name: '콩떡', status: '기다리는 중...', waiting: true },
+];
+
 /** shared 컴포넌트를 Figma 와 나란히 놓고 보는 확인용 화면. 주소는 /#/shared-preview 이고 서비스 흐름에는 들어가지 않는다. */
 export const SharedPreviewPage = () => {
   const [name, setName] = useState('');
@@ -76,8 +84,21 @@ export const SharedPreviewPage = () => {
         </button>
       </section>
 
-      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title='시트 제목'>
-        <p className='text-body-m-medium text-text-secondary'>여기에 목록이나 버튼을 넣으세요</p>
+      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title='함께하는 사람'>
+        <div className='flex flex-col gap-3'>
+          {MEMBERS.map((member) => (
+            <MemberRow
+              key={member.name}
+              name={member.name}
+              variant={member.waiting ? 'waiting' : 'default'}
+              trailing={
+                <span className='shrink-0 rounded-full bg-status-info-bg px-[10px] py-1 text-caption-medium text-status-info'>
+                  {member.status}
+                </span>
+              }
+            />
+          ))}
+        </div>
       </BottomSheet>
     </div>
   );
