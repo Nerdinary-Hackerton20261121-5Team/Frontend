@@ -3,7 +3,6 @@ import { HashRouter, Route, Routes } from 'react-router';
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { CameraTestPage } from '@/features/attention/CameraTestPage';
 import { ExamplePage } from '@/features/example/ExamplePage';
-import { SkipButton } from '@/features/session/components/SkipButton';
 import { CameraPage } from '@/features/session/pages/CameraPage';
 import { ClosedPage } from '@/features/session/pages/ClosedPage';
 import { EntryPage } from '@/features/session/pages/EntryPage';
@@ -49,8 +48,6 @@ export const App = () => {
             <Route path='/camera-test' element={<CameraTestPage />} />
             <Route path='*' element={<NotFoundPage />} />
           </Routes>
-          {/* TODO(skip): 테스트용 건너뛰기 버튼. 시연 전에 지운다 */}
-          <SkipButton />
         </div>
       </HashRouter>
     </QueryClientProvider>

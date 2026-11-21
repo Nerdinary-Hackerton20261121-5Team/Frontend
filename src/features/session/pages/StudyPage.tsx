@@ -6,7 +6,6 @@ import { BottomSheet } from '@/shared/BottomSheet';
 import { useBoard, useHeartbeat } from '../api';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
-import { SKIP_ENABLED } from '../components/SkipButton';
 import { SheetActions } from '../components/SheetActions';
 import { StudyBoard } from '../components/StudyBoard';
 import { StudyHud } from '../components/StudyHud';
@@ -70,8 +69,8 @@ export const StudyPage = () => {
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
   if (session.phase === 'assembly') return <Navigate to={`/s/${code}/result`} replace />;
-  // TODO(skip): 건너뛰기로 카메라 없이 들어온 경우를 허용한다. 건너뛰기를 지울 때 조건을 !stream 으로 되돌린다
-  if (!stream && !SKIP_ENABLED) return <Navigate to={`/s/${code}/camera`} replace />;
+  // 새로고침 등으로 카메라가 꺼졌으면 다시 켜고 돌아온다
+  if (!stream) return <Navigate to={`/s/${code}/camera`} replace />;
 
   // 한 사람이 맡을 조각 수는 줄 단위 판(gridFor)과 같고, 화면에는 Figma 처럼 세로로 긴 판에 흩어 놓는다
   const perPerson = gridFor(session.pieceCount, session.members.length).cols;
