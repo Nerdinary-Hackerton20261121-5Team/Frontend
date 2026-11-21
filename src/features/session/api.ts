@@ -4,9 +4,7 @@ import type { Remote } from './types';
 
 /** 서버가 저장한 사진. url 은 화면에 쓸 수 있게 크기를 줄인 주소다 */
 export type UploadedImage = {
-  key: string;
-  contentType: string;
-  size: number;
+  imageId: number;
   url: string;
   thumbnailUrl: string;
 };
@@ -36,6 +34,8 @@ export type SessionDetail = {
   elapsedSeconds: number;
   remainingSeconds: number;
   serverNow: string;
+  /** 방의 사진. 아직 정하지 않았으면 null */
+  image: UploadedImage | null;
   me: { participantId: number; isCreator: boolean };
 };
 
@@ -68,27 +68,42 @@ const withToken = (remote: Remote) => ({ headers: { 'X-Participant-Token': remot
 export const shouldUseMock = (error: unknown) =>
   error instanceof ApiError && (error.status === 0 || error.code === 'NOT_FOUND');
 
-/** 퍼즐로 만들 사진을 서버에 올린다 */
-export const useUploadPhoto = () => {
-  return useMutation({
-    mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append('file', file);
-      return api.post<UploadedImage>('/api/images', form);
-    },
-  });
-};
-
-/** 방을 만든다. 만든 사람도 참가자로 등록된다 */
+/**
+ * 방을 만들고 고른 사진을 방의 사진으로 올린다.
+ * 서버는 참가자 토큰이 있어야 사진을 받으므로 방을 먼저 만든 뒤 그 토큰으로 올린다.
+ * clientRequestId 가 같으면 서버는 방을 새로 만들지 않고 먼저 만든 방을 돌려준다.
+ */
 export const useCreateSession = () => {
   return useMutation({
-    // clientRequestId 가 같으면 서버는 방을 새로 만들지 않고 먼저 만든 방을 돌려준다.
-    // 응답을 못 받고 다시 누르거나 새로고침해도 방이 두 개가 되지 않는다
-    mutationFn: (input: {
+    mutationFn: async (input: {
       goalSeconds: number;
       maxParticipants: number;
       clientRequestId: string;
-    }) => api.post<SessionEntry>('/api/sessions', input),
+      photo: File | null;
+    }) => {
+      const { photo, ...body } = input;
+      const entry = await api.post<SessionEntry>('/api/sessions', body);
+      const remote = {
+        sessionId: entry.sessionId,
+        token: entry.participantToken,
+        isCreator: entry.isCreator,
+      };
+      if (!photo) return { entry, photoUrl: null };
+      try {
+        const form = new FormData();
+        form.append('file', photo);
+        const image = await api.post<UploadedImage>('/api/images', form, withToken(remote));
+        await api.patch(
+          `/api/sessions/${remote.sessionId}/image`,
+          { imageId: image.imageId },
+          withToken(remote),
+        );
+        return { entry, photoUrl: image.url };
+      } catch {
+        // 방은 만들어졌으니 사진 없이 이어 간다. 만든 사람은 고른 사진을 그대로 본다
+        return { entry, photoUrl: null };
+      }
+    },
   });
 };
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 import { LoadingView } from '@/components/LoadingView';
 import { Button } from '@/shared/Button';
 import { Input } from '@/shared/Input';
@@ -9,7 +9,6 @@ import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { JigsawBoard } from '../components/JigsawBoard';
 import { StepLayout } from '../components/StepLayout';
-import { readInvite } from '../invite';
 import { NAME_MAX } from '../limits';
 import { useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
@@ -20,7 +19,6 @@ const PREVIEW_GRID = { cols: 3, rows: 3 };
 /** 03-B 초대받은 입장. 링크를 열면 바로 자리를 잡고, 보일 이름을 정한 뒤 들어간다. */
 export const JoinPage = () => {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
   const { code, session } = useCurrentSession();
   const openAsGuest = useSessionStore((state) => state.openAsGuest);
   const rename = useSessionStore((state) => state.rename);
@@ -30,16 +28,12 @@ export const JoinPage = () => {
   const join = useJoinSession(code, session === null);
   const { gone } = useSessionSync();
 
-  // 링크에 실려 온 값은 누구나 바꿀 수 있으므로 확인한 것만 쓴다
-  const { photoUrl, pieceCount } = readInvite(params);
-
   useEffect(() => {
     if (session) return;
-    const invite = { photoUrl, pieceCount };
-    if (join.data) openAsGuest(code, join.data, invite);
+    if (join.data) openAsGuest(code, join.data);
     // TODO(mock): 세션 API 가 없는 서버에서는 흉내 낸 세션으로 들어간다
-    else if (join.error && shouldUseMock(join.error)) openAsGuest(code, null, invite);
-  }, [session, join.data, join.error, code, photoUrl, pieceCount, openAsGuest]);
+    else if (join.error && shouldUseMock(join.error)) openAsGuest(code, null);
+  }, [session, join.data, join.error, code, openAsGuest]);
 
   // 잡아 둔 자리가 서버에서 없어졌으면(나갔다가 돌아온 경우 등) 비우고 다시 입장한다
   useEffect(() => {
