@@ -39,17 +39,20 @@ export const ResultPage = () => {
   // 서버 세션이면 조립판을 서버에서 읽는다. 다른 사람이 끼운 조각과 완성 여부가 여기로 들어온다
   const remote = session?.remote ?? null;
   const assembly = useAssembly(remote, session?.phase === 'assembly');
-  // 서버가 오려 준 조각 그림. 칸 번호(1부터)를 조각 번호(0부터)로 바꿔 둔다
+  // 서버가 오려 준 조각 그림. 끌어다 놓을 내 조각부터 받고, 칸 번호(1부터)를 조각 번호(0부터)로 바꿔 둔다
+  const imagePieces = board.data?.hasImage ? board.data.pieces : [];
   const images = usePieceImages(
     remote,
-    board.data?.hasImage ? board.data.pieces.map((piece) => piece.position) : [],
-    session?.phase === 'assembly' ? 'assembly' : null,
+    imagePieces.filter((piece) => piece.isMine).map((piece) => piece.position),
+    imagePieces.filter((piece) => !piece.isMine).map((piece) => piece.position),
+    session?.phase === 'assembly',
   );
-  const pieceImages = images.data
-    ? Object.fromEntries(
-        Object.entries(images.data.urls).map(([position, url]) => [Number(position) - 1, url]),
-      )
-    : undefined;
+  const pieceImages =
+    imagePieces.length > 0 && !images.failed
+      ? Object.fromEntries(
+          Object.entries(images.urls).map(([position, url]) => [Number(position) - 1, url]),
+        )
+      : undefined;
   const members = session?.members;
   const myName = members?.find((member) => member.isMe)?.name ?? '';
   const myPositions = session?.myPositions ?? null;
@@ -72,8 +75,8 @@ export const ResultPage = () => {
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
   if (session.phase === 'study') return <Navigate to={`/s/${code}/study`} replace />;
-  // 서버 조각 그림을 받기 전에 그리면 판 모양이 한 번 바뀌어 보인다. 다 받은 뒤에 그린다
-  if (remote && (board.isPending || (board.data?.hasImage && images.isPending))) {
+  // 서버 조각 그림을 받기 전에 그리면 판 모양이 한 번 바뀌어 보인다. 내 조각을 받은 뒤에 그린다
+  if (remote && (board.isPending || (imagePieces.length > 0 && !images.mineSettled))) {
     return <LoadingView />;
   }
 
@@ -91,7 +94,10 @@ export const ResultPage = () => {
   const waitingName = waitingPiece
     ? members?.find((member) => member.id === remoteId(waitingPiece.participantId))?.name
     : undefined;
-  const boardAspect = images.data ? (images.data.cellAspect * grid.cols) / grid.rows : undefined;
+  // 공부가 끝나면 서버가 내 최종 복원도를 진행판에 싣는다
+  const myRestoration = board.data?.pieces.find((piece) => piece.isMine)?.restoration ?? undefined;
+  const boardAspect =
+    pieceImages && images.cellAspect ? (images.cellAspect * grid.cols) / grid.rows : undefined;
 
   const onPlace = (index: number) => {
     if (!remote) return placePiece(index, myName);
@@ -114,6 +120,8 @@ export const ResultPage = () => {
         pieceImages={pieceImages}
         padRatio={board.data?.padRatio}
         aspect={boardAspect}
+        myPieces={myPieces}
+        myRestoration={myRestoration}
         ending={endSession.isPending}
         onHome={() => {
           // 세션은 진입 화면에 도착하면 비운다. 여기서 먼저 비우면 이 화면이 입장 화면으로 튕긴다
@@ -136,6 +144,7 @@ export const ResultPage = () => {
       pieceImages={pieceImages}
       padRatio={board.data?.padRatio}
       aspect={boardAspect}
+      myRestoration={myRestoration}
       lastPlacedBy={lastPlacedBy}
       waitingName={waitingName}
       onPlace={onPlace}

@@ -10,5 +10,10 @@ export const HOST_NAME = '개설자';
 // TODO: 테스트하는 동안만 1분까지 받는다. 끝나면 시안의 5분으로 되돌린다
 export const GOAL_MIN = 1;
 export const GOAL_MAX = 180;
+/**
+ * 하나도 채우지 못한 내 조각의 흐림 정도. 칸 너비에 대한 비율이다.
+ * 서버는 내 조각을 늘 선명하게 주므로, 내가 채운 만큼만 선명해 보이게 화면에서 흐린다
+ */
+export const MY_BLUR_RATIO = 0.045;
 /** 개설자가 다 모이기 전에 먼저 시작할 수 있는 최소 인원 */
 export const EARLY_START_MIN = 4;

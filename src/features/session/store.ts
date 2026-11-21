@@ -85,6 +85,8 @@ interface SessionStore {
   start: () => void;
   /** 시간을 seconds 만큼 흘려보낸다. mode 에 따라 어디에 쌓일지가 달라진다 */
   tick: (seconds: number, mode: TickMode) => void;
+  /** 서버가 센 내 공부 시간(초)에 맞춘다. 이 기기에서 센 값이 벌어졌을 때만 고친다 */
+  syncFocused: (seconds: number) => void;
   setPaused: (paused: boolean) => void;
   /** 공부를 끝내고 퍼즐 맞추기로 넘어간다 */
   finishStudy: () => void;
@@ -336,6 +338,13 @@ export const useSessionStore = create<SessionStore>()(
             },
           };
         }),
+
+      syncFocused: (seconds) =>
+        set((state) =>
+          Math.abs(state.timeline.focused - seconds) <= 2
+            ? state
+            : { timeline: { ...state.timeline, focused: seconds } },
+        ),
 
       setPaused: (paused) => set({ paused }),
 
