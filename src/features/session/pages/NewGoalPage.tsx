@@ -17,6 +17,7 @@ export const NewGoalPage = () => {
   const draft = useSessionStore((state) => state.draft);
   const setDraftGoal = useSessionStore((state) => state.setDraftGoal);
   const openAsHost = useSessionStore((state) => state.openAsHost);
+  const session = useSessionStore((state) => state.session);
   const create = useCreateSession();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -24,7 +25,18 @@ export const NewGoalPage = () => {
 
   const custom = !PRESETS.includes(draft.goalMinutes);
 
+  // 초대 화면에서 뒤로 왔다가 값을 바꾸지 않고 다시 누르면 이미 만든 방으로 돌아간다.
+  // 방을 또 만들면 먼저 나눈 초대 링크가 쓸모없어진다
+  const reusable =
+    session !== null &&
+    session.phase === 'lobby' &&
+    session.members.some((member) => member.isMe && member.isHost) &&
+    session.goalMinutes === draft.goalMinutes &&
+    session.memberCount === draft.memberCount &&
+    session.pieceCount === draft.pieceCount;
+
   const next = () => {
+    if (reusable) return navigate(`/s/${session.code}/invite`);
     create.mutate(
       { goalSeconds: draft.goalMinutes * 60, maxParticipants: draft.memberCount },
       {
