@@ -108,20 +108,7 @@ Back_End · Frontend · cluster-config 세 레포 README가 같은 표를 쓴다
 
 ### DB 외부 접속
 
-노트북의 MySQL 클라이언트(DBeaver·DataGrip·`mysql` CLI)로 DB에 붙는 방법은 두 가지다. 운영 DB는 사용자 `app` · 데이터베이스 `app`, dev DB는 사용자 `app_dev` · 데이터베이스 `app_dev`이고(아래 예시는 dev, 운영은 `app`으로 바꾼다), 비밀번호는 운영자에게 받는다. 비밀번호는 `.env` 같은 로컬 파일에만 두고 레포·이슈·PR·공개 채팅에 쓰지 않는다(이 주소는 인터넷에 열려 있고 보호막은 비밀번호뿐이다. 새어 나가면 바로 운영자에게 알린다). 백업이 없으니 `DROP`·대량 `DELETE` 전에 한 번 더 확인한다. 해커톤이 끝나면 닫힌다.
-
-1. **cloudflared** (누구나, 비밀번호만 있으면 된다). 설치는 macOS `brew install cloudflared`, Windows `winget install --id Cloudflare.cloudflared`. 터미널 하나를 켜 둔 채로 쓴다.
-
-   ```sh
-   cloudflared access tcp --hostname cmc-11th-db.bemelon.me --url 127.0.0.1:13306
-   mysql -h 127.0.0.1 -P 13306 -u app_dev -p app_dev    # 다른 터미널에서
-   ```
-
-2. **Tailscale** (운영자가 `bemelon` 노드를 공유한 사람만). Tailscale 앱을 켠 상태(tailnet 안)에서만 열리고 cloudflared 없이 바로 접속한다. 이름이 안 풀리면 호스트에 `100.105.208.85`를 쓴다.
-
-   ```sh
-   mysql -h bemelon.tailc71c61.ts.net -P 30306 -u app_dev -p app_dev
-   ```
+DB 포트는 인터넷에 열려 있지 않습니다. 클러스터 밖에서는 운영자가 Tailscale 노드를 공유한 사람만 접속할 수 있고, 접속 주소와 비밀번호는 운영자에게 받습니다. 인터넷 공개 경로(cloudflared)는 2026-11-22 에 없앴습니다.
 
 ## 배포 상세 (Frontend)
 
