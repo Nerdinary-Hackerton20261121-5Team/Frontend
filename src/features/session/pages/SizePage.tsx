@@ -16,8 +16,7 @@ export const SizePage = () => {
   const setSize = useSessionStore((state) => state.setSize);
   const createSession = useSessionStore((state) => state.createSession);
 
-  // TODO(mock): 사진 API 가 생기면 DEV 조건을 지운다. 로컬에서는 사진 없이 넘어오면 createSession 이 임시 그림을 쓴다.
-  if (!draft.photoUrl && !import.meta.env.DEV) return <Navigate to='/new/photo' replace />;
+  if (!draft.photoUrl) return <Navigate to='/new/photo' replace />;
 
   const next = () => navigate(`/s/${createSession()}/invite`);
 
