@@ -1,36 +1,76 @@
 import { useRef } from 'react';
 import { Toast } from '@/shared/Toast';
+import { pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import type { Session, Timeline } from '../types';
 import { useElementSize } from '../useElementSize';
 import { JigsawBoard } from './JigsawBoard';
+import { PieceImages } from './PieceImages';
 import { ResultSummary } from './ResultSummary';
 
 interface DoneViewProps {
   session: Session;
   grid: Grid;
   timeline: Timeline;
+  /** 서버가 오려 준 조각 그림(조각 번호별). 사람마다 채운 만큼만 선명하다 */
+  pieceImages?: Record<number, string>;
+  padRatio?: number;
+  /** 판의 가로세로 비율(가로 ÷ 세로) */
+  aspect?: number;
   /** 방을 정리하는 중인지 */
   ending: boolean;
   onHome: () => void;
 }
 
 /** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 준다. */
-export const DoneView = ({ session, grid, timeline, ending, onHome }: DoneViewProps) => {
+export const DoneView = ({
+  session,
+  grid,
+  timeline,
+  pieceImages,
+  padRatio = 0.2,
+  aspect,
+  ending,
+  onHome,
+}: DoneViewProps) => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const size = useElementSize(frameRef);
+  // 서버 조각은 사진 비율을 지킨 채 화면을 가득 덮게 키우고, 넘치는 부분은 가운데를 맞춰 자른다
+  const boardWidth = aspect ? Math.max(size.width, size.height * aspect) : size.width;
+  const boardHeight = aspect ? boardWidth / aspect : size.height;
 
   return (
     <div ref={frameRef} className='relative min-h-0 flex-1 overflow-hidden bg-bg-inverse'>
-      <JigsawBoard
-        className='absolute inset-0'
-        width={size.width}
-        height={size.height}
-        grid={grid}
-        photoUrl={session.photoUrl}
-        look={() => 'photo'}
-        outlineClassName={() => 'stroke-white/70 stroke-[1.5]'}
-      />
+      {pieceImages ? (
+        <div
+          className='absolute'
+          style={{
+            left: (size.width - boardWidth) / 2,
+            top: (size.height - boardHeight) / 2,
+            width: boardWidth,
+            height: boardHeight,
+          }}
+        >
+          <PieceImages
+            grid={grid}
+            cellW={boardWidth / grid.cols}
+            cellH={boardHeight / grid.rows}
+            images={pieceImages}
+            indexes={Array.from({ length: pieceTotal(grid) }, (_, index) => index)}
+            padRatio={padRatio}
+          />
+        </div>
+      ) : (
+        <JigsawBoard
+          className='absolute inset-0'
+          width={size.width}
+          height={size.height}
+          grid={grid}
+          photoUrl={session.photoUrl}
+          look={() => 'photo'}
+          outlineClassName={() => 'stroke-white/70 stroke-[1.5]'}
+        />
+      )}
       <Toast
         variant='dark'
         className='absolute top-[calc(45px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2'

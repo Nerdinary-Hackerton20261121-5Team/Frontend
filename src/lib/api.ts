@@ -84,8 +84,24 @@ async function request<T>(
   return (envelope ? envelope.data : data) as T
 }
 
+/** 이미지처럼 JSON 이 아닌 응답을 그대로 받는다. */
+async function requestBlob(path: string, options: Options = {}): Promise<Blob> {
+  let response: Response
+  try {
+    response = await fetch(BASE_URL + path, {
+      headers: options.headers,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+  } catch {
+    throw new ApiError('서버에 연결할 수 없어요. 네트워크 상태를 확인해 주세요.', 0)
+  }
+  if (!response.ok) throw new ApiError(FALLBACK_MESSAGE, response.status)
+  return response.blob()
+}
+
 export const api = {
   get: <T>(path: string, options?: Options) => request<T>('GET', path, undefined, options),
+  getBlob: (path: string, options?: Options) => requestBlob(path, options),
   post: <T>(path: string, body?: Body, options?: Options) =>
     request<T>('POST', path, body, options),
   put: <T>(path: string, body?: Body, options?: Options) => request<T>('PUT', path, body, options),
