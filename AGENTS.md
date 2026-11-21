@@ -4,7 +4,7 @@
 
 ## 새 기능을 만드는 방식
 
-`src/features/home` 이 가장 작은 본보기다. 새 기능은 `src/features/{이름}/` 에 같은 구성으로 만든다.
+`src/features/session` 이 본보기다(`api.ts`, `pages`, `components`). 새 기능은 `src/features/{이름}/` 에 같은 구성으로 만든다.
 
 - **서버 호출**. `features/{이름}/api.ts` 에 타입과 React Query 훅(`useQuery`, `useMutation`)을 만들고, 훅 안에서 `lib/api.ts` 의 `api.get/post/put/patch/delete` 를 쓴다. 변경이 성공하면 관련 쿼리를 `invalidateQueries` 한다.
 - **화면 틀**. 모바일 폭(최대 402px) 틀은 `src/App.tsx` 에 있다. 화면은 맨 위에 `@/shared/Header` 를 두고, 내용은 `<main className="min-h-0 flex-1 overflow-y-auto">` 안에 둔다. 공통 컴포넌트는 `src/shared` 에 있다.
