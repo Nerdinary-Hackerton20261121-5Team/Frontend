@@ -10,7 +10,7 @@
 - **화면 틀**. 모든 화면은 `Screen` 으로 감싼다. 주요 버튼은 `footer` 에 둔다.
 - **세 가지 상태**. 데이터를 불러오는 화면은 `LoadingView`, `EmptyView`, `ErrorView` 를 모두 그린다. `ErrorView` 에는 `onRetry` 를 넘긴다.
 - **변경 요청**. 버튼에 `loading` 을 넘겨 중복 요청을 막고, 실패하면 `ApiError.message` 를 화면에 보여 준다.
-- **스타일**. Tailwind 클래스를 쓰고, 색과 폰트는 `src/index.css` 의 `@theme` 토큰(`bg-primary`, `text-sub`)으로 쓴다. 새 색은 토큰에 먼저 추가한다.
+- **스타일**. Tailwind 클래스를 쓰고, 색과 폰트는 `src/index.css` 의 `@theme` 토큰(`bg-primary`, `text-sub`)으로 쓴다. 새 색은 토큰에 먼저 추가한다. 글자 스타일은 `src/styles/typography.css` 의 토큰(`text-title-l`, `text-body-m-medium`)을 쓴다.
 - **라우트**. `src/App.tsx` 의 `Routes` 에 추가한다. 화면 이동은 `Link` 와 `useNavigate` 를 쓴다.
 - **상태**. 서버 데이터는 React Query, 입력값은 `useState` 로 다룬다.
 - **컴포넌트 작성**. 컴포넌트와 훅은 `export const Button = ({ ... }: ButtonProps) => { ... }` 처럼 화살표 함수로 선언한다. 파일 하나에는 컴포넌트를 하나만 두고, 파일 이름을 컴포넌트 이름과 같게 한다. 작은 하위 컴포넌트도 파일을 나눈다.

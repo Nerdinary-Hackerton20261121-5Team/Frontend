@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import './styles/typography.css';
 
 /* 디자인 시스템이 나오면 여기 값만 바꾼다. bg-primary, text-ink 처럼 클래스로 쓴다. */
 @theme {
