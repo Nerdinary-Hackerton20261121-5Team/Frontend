@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/Button';
+import { Button } from '@/shared/Button';
 import {
   CHECK_INTERVAL_MS,
   DEFAULT_ATTENTION_CONFIG,
@@ -217,7 +217,7 @@ export const CameraTestPage = () => {
 
       {stream ? (
         <>
-          <Button variant='ghost' onClick={restart}>
+          <Button variant='secondary' onClick={restart}>
             처음부터 다시 판정
           </Button>
           <Button onClick={stop}>카메라 끄기</Button>

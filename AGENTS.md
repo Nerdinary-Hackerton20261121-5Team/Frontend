@@ -7,7 +7,7 @@
 `src/features/home` 이 가장 작은 본보기다. 새 기능은 `src/features/{이름}/` 에 같은 구성으로 만든다.
 
 - **서버 호출**. `features/{이름}/api.ts` 에 타입과 React Query 훅(`useQuery`, `useMutation`)을 만들고, 훅 안에서 `lib/api.ts` 의 `api.get/post/put/patch/delete` 를 쓴다. 변경이 성공하면 관련 쿼리를 `invalidateQueries` 한다.
-- **화면 틀**. 모든 화면은 `Screen` 으로 감싼다. 주요 버튼은 `footer` 에 둔다.
+- **화면 틀**. 모바일 폭(최대 402px) 틀은 `src/App.tsx` 에 있다. 화면은 맨 위에 `@/shared/Header` 를 두고, 내용은 `<main className="min-h-0 flex-1 overflow-y-auto">` 안에 둔다. 공통 컴포넌트는 `src/shared` 에 있다.
 - **세 가지 상태**. 데이터를 불러오는 화면은 `LoadingView`, `EmptyView`, `ErrorView` 를 모두 그린다. `ErrorView` 에는 `onRetry` 를 넘긴다.
 - **변경 요청**. 버튼에 `loading` 을 넘겨 중복 요청을 막고, 실패하면 `ApiError.message` 를 화면에 보여 준다.
 - **스타일**. Tailwind 클래스를 쓰고, 색과 글자는 `src/styles` 의 `@theme` 토큰으로 쓴다. 색은 `colors.css` 의 용도별 토큰(`bg-bg-default`, `text-text-primary`, `bg-brand-primary`)을 쓰고 원색(`--green-400`)은 직접 쓰지 않는다. 글자는 `typography.css` 의 토큰(`text-title-l`, `text-body-m-medium`)을 쓴다. 새 색은 토큰에 먼저 추가한다.
@@ -42,7 +42,7 @@
 ## 이 저장소에서 헷갈리는 것
 
 - 서버는 NestJS이고 로컬 주소는 `http://localhost:3000`, 모든 경로에 `/api` 가 붙는다. 명세는 `http://localhost:3000/docs` 에 있다.
-- 서버는 성공하면 본문을 그대로, 실패하면 `{ statusCode, message, error }` 를 보낸다. `lib/api.ts` 가 실패를 `ApiError` 로 바꾼다. 서버 팀이 공통 응답 형식을 정하면 그 파일 하나만 고친다.
+- 서버는 `{ success, code, message, data }` 로 응답한다. `lib/api.ts` 가 성공이면 `data` 만 꺼내 돌려주고, 실패면 `message` 와 `code` 를 담은 `ApiError` 로 바꾼다. 그래서 `api.get<T>` 의 `T` 는 `data` 의 타입이다. 공통 응답 형식이 바뀌면 그 파일 하나만 고친다.
 - 앱은 배포된 웹 주소를 WebView로 띄운다. 웹에서 안 되는 기능은 앱에서도 안 되고, 앱이 백그라운드로 가면 웹 코드는 멈춘다.
 - 앱에서는 `https` 주소만 호출된다. 배포된 웹은 서버와 같은 origin이라 `/api/...` 상대 경로로 부르고, 로컬 개발에서만 `VITE_API_BASE_URL` 로 서버 주소를 준다.
 - `HashRouter` 를 쓴다. 주소는 `/#/경로` 형태다.

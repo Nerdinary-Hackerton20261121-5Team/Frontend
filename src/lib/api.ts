@@ -1,6 +1,6 @@
-// 서버(NestJS) 호출을 한곳에서 처리한다. 성공하면 응답 본문을 그대로 돌려주고,
-// 실패하면 서버의 { statusCode, message, error } 를 ApiError 로 바꿔 던진다.
-// 서버 팀이 공통 응답 형식을 정하면 이 파일만 고친다.
+// 서버(NestJS) 호출을 한곳에서 처리한다. 서버는 { success, code, message, data } 로 응답한다.
+// 성공하면 data 만 꺼내 돌려주고, 실패하면 message 와 code 를 ApiError 로 바꿔 던진다.
+// 서버의 공통 응답 형식이 바뀌면 이 파일만 고친다.
 
 /** 서버가 실패로 응답했거나 서버에 닿지 못했을 때 던진다. message 는 화면에 그대로 보여 줄 수 있다. */
 export class ApiError extends Error {
@@ -8,14 +8,27 @@ export class ApiError extends Error {
   readonly status: number
   /** 검증 실패처럼 서버가 메시지를 여러 개 보낸 경우 전체 목록 */
   readonly details: string[]
+  /** 서버가 보낸 에러 코드. 예: NOT_FOUND, INVALID_INPUT. 서버에 닿지 못했으면 없다 */
+  readonly code: string | undefined
 
-  constructor(message: string, status: number, details: string[] = []) {
+  constructor(message: string, status: number, details: string[] = [], code?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.details = details
+    this.code = code
   }
 }
+
+/** 서버의 공통 응답 형식 */
+type Envelope = { success: boolean; code?: string; message?: string | string[]; data: unknown }
+
+// /api/health 처럼 공통 형식을 쓰지 않는 응답도 있어서 모양을 보고 가린다.
+const isEnvelope = (value: unknown): value is Envelope =>
+  typeof value === 'object' &&
+  value !== null &&
+  'data' in value &&
+  typeof (value as Envelope).success === 'boolean'
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const TIMEOUT_MS = 10_000
@@ -45,12 +58,14 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
     // JSON 이 아닌 문자열 응답은 그대로 쓴다.
   }
 
-  if (!response.ok) {
+  const envelope = isEnvelope(data) ? data : undefined
+
+  if (!response.ok || envelope?.success === false) {
     const raw = (data as { message?: string | string[] } | undefined)?.message
     const details = Array.isArray(raw) ? raw : raw ? [raw] : []
-    throw new ApiError(details[0] ?? FALLBACK_MESSAGE, response.status, details)
+    throw new ApiError(details[0] ?? FALLBACK_MESSAGE, response.status, details, envelope?.code)
   }
-  return data as T
+  return (envelope ? envelope.data : data) as T
 }
 
 export const api = {
