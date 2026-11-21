@@ -11,7 +11,7 @@ import { SheetActions } from '../components/SheetActions';
 import { StudyBoard } from '../components/StudyBoard';
 import { StudyHud } from '../components/StudyHud';
 import { pieceOwners } from '../goalPreview';
-import { MY_BLUR_RATIO } from '../limits';
+import { blurRatio } from '../limits';
 import { gridFor, ownersFromServer, pieceTotal } from '../puzzle';
 import { useSessionStore } from '../store';
 import { studyGrid } from '../studyLayout';
@@ -139,7 +139,7 @@ export const StudyPage = () => {
             members={session.members}
             photoUrl={session.photoUrl}
             sources={sources}
-            myBlur={(1 - (me?.progress ?? 0)) * (size.width / grid.cols) * MY_BLUR_RATIO}
+            myBlur={(size.width / grid.cols) * blurRatio(me?.progress ?? 0)}
             away={showAway}
             radius={BOARD_RADIUS}
           />

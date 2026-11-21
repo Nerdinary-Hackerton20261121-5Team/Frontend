@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Toast } from '@/shared/Toast';
-import { MY_BLUR_RATIO } from '../limits';
+import { blurRatio } from '../limits';
 import { pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 import type { Session, Timeline } from '../types';
@@ -47,8 +47,8 @@ export const DoneView = ({
   // 서버 조각은 사진 비율을 지킨 채 화면을 가득 덮게 키우고, 넘치는 부분은 가운데를 맞춰 자른다
   const boardWidth = aspect ? Math.max(size.width, size.height * aspect) : size.width;
   const boardHeight = aspect ? boardWidth / aspect : size.height;
-  const myBlur = (1 - myRestoration) * (boardWidth / grid.cols) * MY_BLUR_RATIO;
-  const myFilter = pieceImages && myBlur > 0.5 ? 'url(#done-my-blur)' : undefined;
+  const myBlur = (boardWidth / grid.cols) * blurRatio(myRestoration);
+  const myFilter = pieceImages && boardWidth > 0 ? 'url(#done-my-blur)' : undefined;
 
   return (
     <div ref={frameRef} className='relative min-h-0 flex-1 overflow-hidden bg-bg-inverse'>

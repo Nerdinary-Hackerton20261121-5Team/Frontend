@@ -1,6 +1,7 @@
 import { BottomSheet } from '@/shared/BottomSheet';
 import { Button } from '@/shared/Button';
 import { StatusChip } from '@/shared/StatusChip';
+import { formatDuration } from '../time';
 import type { Member } from '../types';
 import { SheetActions } from './SheetActions';
 
@@ -30,7 +31,7 @@ export const PeopleSheet = ({
           </span>
           {member.status === 'recording' ? (
             <StatusChip variant='recording'>
-              기록 중 · {Math.floor(member.progress * goalMinutes)}분째
+              기록 중 · {formatDuration(member.progress * goalMinutes * 60)}째
             </StatusChip>
           ) : (
             <StatusChip variant='away'>
