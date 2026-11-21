@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import {
+  CHECK_INTERVAL_MS,
   DEFAULT_ATTENTION_CONFIG,
   createAttentionTracker,
   loadAttention,
@@ -31,9 +32,9 @@ const LABEL: Record<Attention, string> = {
 const SETTINGS: { key: keyof AttentionConfig; label: string; step: number }[] = [
   { key: 'yawLimit', label: '다른 곳으로 보는 각도(도)', step: 5 },
   { key: 'yawReturn', label: '돌아온 것으로 보는 각도(도)', step: 5 },
-  { key: 'awaySeconds', label: '고개를 돌린 채 기다리는 시간(초)', step: 1 },
-  { key: 'absentSeconds', label: '얼굴이 안 보일 때 기다리는 시간(초)', step: 1 },
-  { key: 'bowedSeconds', label: '고개를 숙였을 때 기다리는 시간(초)', step: 10 },
+  { key: 'awaySeconds', label: '고개를 돌린 채 기다리는 시간(초)', step: 0.5 },
+  { key: 'absentSeconds', label: '아무도 없을 때 기다리는 시간(초)', step: 0.5 },
+  { key: 'turnLimit', label: '얼굴이 안 보일 때 옆으로 보는 치우침', step: 0.05 },
 ];
 
 const degrees = (value: number | null | undefined) =>
@@ -46,7 +47,7 @@ export const CameraTestPage = () => {
   const start = useCameraStore((state) => state.start);
   const stop = useCameraStore((state) => state.stop);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [modelState, setModelState] = useState<'idle' | 'ready' | 'failed'>('idle');
+  const [modelState, setModelState] = useState<'idle' | 'ready' | 'face-only' | 'failed'>('idle');
   const [config, setConfig] = useState(DEFAULT_ATTENTION_CONFIG);
   const [reading, setReading] = useState<Reading | null>(null);
   const [count, setCount] = useState(0);
@@ -56,17 +57,17 @@ export const CameraTestPage = () => {
     if (!stream) return;
     let timer: number | undefined;
     let cancelled = false;
-    const track = createAttentionTracker(config);
 
     loadAttention()
-      .then((landmarker) => {
+      .then((detector) => {
         if (cancelled) return;
-        setModelState('ready');
+        const track = createAttentionTracker(config, detector.pose !== null);
+        setModelState(detector.pose ? 'ready' : 'face-only');
         timer = window.setInterval(() => {
           const video = videoRef.current;
           if (document.hidden || !video || video.readyState < 2 || video.videoWidth === 0) return;
           const startedAt = performance.now();
-          const sample = sampleAttention(landmarker, video);
+          const sample = sampleAttention(detector, video);
           const finishedAt = performance.now();
           setReading({
             ...track(sample, finishedAt),
@@ -75,7 +76,7 @@ export const CameraTestPage = () => {
             size: `${video.videoWidth}x${video.videoHeight}`,
           });
           setCount((value) => value + 1);
-        }, 1000);
+        }, CHECK_INTERVAL_MS);
       })
       .catch(() => setModelState('failed'));
 
@@ -101,6 +102,8 @@ export const CameraTestPage = () => {
   };
 
   const sample = reading?.sample;
+  const face = sample?.kind === 'face' ? sample : null;
+  const body = sample?.kind === 'body' ? sample : null;
   const rows: [string, string][] = [
     [
       '카메라',
@@ -115,30 +118,47 @@ export const CameraTestPage = () => {
     [
       '판정 모델',
       modelState === 'ready'
-        ? '준비됨'
-        : modelState === 'failed'
-          ? '불러오지 못함'
-          : stream
-            ? '불러오는 중'
-            : '대기',
+        ? '준비됨 (얼굴, 몸)'
+        : modelState === 'face-only'
+          ? '얼굴만 준비됨 (몸 인식 실패)'
+          : modelState === 'failed'
+            ? '불러오지 못함'
+            : stream
+              ? '불러오는 중'
+              : '대기',
     ],
     [
-      '얼굴',
-      reading ? (sample ? '보임' : reading.bowed ? '안 보임 (숙인 것으로 봄)' : '안 보임') : '-',
+      '보이는 것',
+      !reading
+        ? '-'
+        : face
+          ? '얼굴'
+          : body
+            ? reading.bowed
+              ? '몸만 (숙인 것으로 봄)'
+              : body.head < 0.5
+                ? '몸만 (머리 안 보임)'
+                : '몸만 (얼굴 안 보임)'
+            : reading.bowed
+              ? '없음 (숙인 것으로 보고 기다림)'
+              : '아무도 없음',
     ],
-    ['고개 좌우 각도', degrees(sample?.yaw)],
+    ['고개 좌우 각도', degrees(face?.yaw)],
     ['기준 좌우 각도', degrees(reading?.baselineYaw)],
     [
       '기준에서 벗어난 각도',
-      sample && reading?.baselineYaw != null
-        ? degrees(Math.abs(sample.yaw - reading.baselineYaw))
+      face && reading?.baselineYaw != null
+        ? degrees(Math.abs(face.yaw - reading.baselineYaw))
         : '-',
     ],
-    ['고개 상하 각도 (참고)', degrees(sample?.pitch)],
-    ['숙인 정도 (클수록 숙임)', sample ? sample.down.toFixed(2) : '-'],
-    ['얼굴 크기 (0.07 미만은 무시)', sample ? sample.span.toFixed(2) : '-'],
+    ['고개 상하 각도 (참고)', degrees(face?.pitch)],
+    ['숙인 정도 (클수록 숙임)', face ? face.down.toFixed(2) : '-'],
+    ['얼굴 크기 (0.07 미만은 무시)', face ? face.span.toFixed(2) : '-'],
+    ['몸 크기 (0.18 미만은 무시)', body ? body.size.toFixed(2) : '-'],
+    ['코의 치우침 (클수록 옆을 봄)', body ? body.turn.toFixed(2) : '-'],
+    ['머리가 보이는 정도 (0.5 미만은 일어난 것)', body ? body.head.toFixed(2) : '-'],
     ['판정 한 번에 걸린 시간', reading ? `${reading.elapsed.toFixed(0)}ms` : '-'],
-    ['판정 횟수 (1초에 한 번)', String(count)],
+    ['판정 횟수 (0.3초에 한 번)', String(count)],
   ];
 
   return (
@@ -178,7 +198,7 @@ export const CameraTestPage = () => {
             {label}
             <input
               type='number'
-              inputMode='numeric'
+              inputMode='decimal'
               min={0}
               step={step}
               value={config[key]}
@@ -190,9 +210,9 @@ export const CameraTestPage = () => {
       </div>
 
       <p className='text-[12px] text-sub'>
-        고개를 좌우로 돌린 것만 다른 곳을 보는 것으로 판정해요. 아래를 보는 것은 판정하지 않고, 숙인
-        채 얼굴이 안 보이면 책을 보는 것으로 보고 기다려요. 기준 자세는 자리에 있는 동안 천천히
-        따라가요.
+        고개를 좌우로 돌린 것만 다른 곳을 보는 것으로 판정해요. 아래를 보는 것은 판정하지 않아요.
+        얼굴이 안 보이면 몸을 찾아서, 사람이 있으면 옆을 보는지 숙였는지 가르고 아무도 없으면 자리
+        비움으로 봐요.
       </p>
 
       {stream ? (
