@@ -1,8 +1,8 @@
 import { Link } from 'react-router'
 import { Screen } from './Screen'
-import { EmptyView } from './StateView'
+import { EmptyView } from './EmptyView'
 
-export function NotFoundPage() {
+export const NotFoundPage = () => {
   return (
     <Screen title="페이지를 찾을 수 없어요">
       <EmptyView

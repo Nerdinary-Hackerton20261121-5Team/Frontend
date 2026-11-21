@@ -6,14 +6,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean
 }
 
-export function Button({
+export const Button = ({
   variant = 'primary',
   loading,
   disabled,
   children,
   className = '',
   ...rest
-}: ButtonProps) {
+}: ButtonProps) => {
   const style =
     variant === 'primary'
       ? 'bg-primary text-white active:bg-primary-pressed'

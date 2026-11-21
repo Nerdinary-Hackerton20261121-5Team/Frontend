@@ -1,9 +1,10 @@
-import { Screen } from '../../components/Screen'
-import { ErrorView, LoadingView } from '../../components/StateView'
+import { Screen } from '@/components/Screen'
+import { ErrorView } from '@/components/ErrorView'
+import { LoadingView } from '@/components/LoadingView'
 import { useServerGreeting } from './api'
 
 // 첫 화면이 정해지기 전까지 서버 연결을 확인하는 자리다. 실제 첫 화면으로 바꾼다.
-export function HomePage() {
+export const HomePage = () => {
   const greeting = useServerGreeting()
 
   return (

@@ -6,7 +6,7 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string
 }
 
-export function TextField({ label, error, id, className = '', ...rest }: TextFieldProps) {
+export const TextField = ({ label, error, id, className = '', ...rest }: TextFieldProps) => {
   const inputId = id ?? rest.name
   return (
     <div className="flex flex-col gap-1.5">

@@ -13,7 +13,7 @@ interface ScreenProps {
 }
 
 /** 모든 화면의 틀. 모바일 폭(최대 402px)으로 고정하고 노치와 홈 인디케이터 영역을 비운다. */
-export function Screen({ title, back, action, footer, children }: ScreenProps) {
+export const Screen = ({ title, back, action, footer, children }: ScreenProps) => {
   const navigate = useNavigate()
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[402px] flex-col bg-white">
