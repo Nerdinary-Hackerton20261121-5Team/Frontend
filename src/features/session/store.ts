@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { BoardPiece, SessionDetail, SessionEntry } from './api';
+import { PIECES_PER_PERSON } from './limits';
 import { MOCK_INVITE, mockPhoto } from './mockData';
 import type { Member, Session, TickMode, Timeline } from './types';
 
@@ -62,7 +63,6 @@ interface SessionStore {
 
   setPhoto: (photoUrl: string | null) => void;
   setMemberCount: (memberCount: number) => void;
-  setPieceCount: (pieceCount: number) => void;
   setDraftGoal: (minutes: number) => void;
   /** 고른 값으로 세션을 열고 초대 코드를 돌려준다. entry 가 없으면 서버 없이 흉내 낸 세션이다 */
   openAsHost: (entry: SessionEntry | null, photoUrl?: string | null) => string;
@@ -110,12 +110,12 @@ export const useSessionStore = create<SessionStore>()(
           draft: {
             ...state.draft,
             memberCount,
+            // 조각 수는 인원에 따라 정해진다
+            pieceCount: memberCount * PIECES_PER_PERSON,
             requestId:
               memberCount === state.draft.memberCount ? state.draft.requestId : crypto.randomUUID(),
           },
         })),
-
-      setPieceCount: (pieceCount) => set((state) => ({ draft: { ...state.draft, pieceCount } })),
 
       setDraftGoal: (goalMinutes) =>
         set((state) => ({
