@@ -77,7 +77,7 @@ export const AssemblyView = ({
   const padY = pieceImages ? cellH * padRatio : loosePadding(cellW, cellH);
 
   const myBlur = cellW * blurRatio(myRestoration);
-  const myFilter = pieceImages && cellW > 0 ? 'url(#assembly-my-blur)' : undefined;
+  const myFilter = pieceImages && myBlur > 0 ? 'url(#assembly-my-blur)' : undefined;
 
   // 아직 끼우지 않은 내 조각은 판의 왼쪽과 오른쪽에 번갈아 놓아 둔다
   const homeOf = (index: number) => {
