@@ -64,6 +64,7 @@ export const NewGoalPage = () => {
         pieceCount={draft.pieceCount}
         memberCount={draft.memberCount}
         myRow={0}
+        seed='new'
         goalMinutes={draft.goalMinutes}
       />
       <div className='mt-5 flex w-full gap-2'>

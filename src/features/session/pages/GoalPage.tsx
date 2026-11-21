@@ -30,6 +30,7 @@ export const GoalPage = () => {
         pieceCount={session.pieceCount}
         memberCount={session.memberCount}
         myRow={session.members.findIndex((member) => member.isMe)}
+        seed={code}
         goalMinutes={session.goalMinutes}
       />
     </StepLayout>

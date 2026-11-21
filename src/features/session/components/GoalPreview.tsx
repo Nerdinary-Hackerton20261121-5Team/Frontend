@@ -1,17 +1,29 @@
-import { gridFor, ownerRow, pieceTotal } from '../puzzle';
+import { previewGrid, previewPieces } from '../goalPreview';
+import { gridFor, pieceTotal } from '../puzzle';
 import { JigsawBoard } from './JigsawBoard';
 
 interface GoalPreviewProps {
   pieceCount: number;
   memberCount: number;
-  /** 내가 맡을 줄 */
+  /** 내가 몇 번째 사람인지 */
   myRow: number;
+  /** 내 조각 자리를 정하는 값. 같은 세션에서는 늘 같은 자리가 나오게 세션 코드를 넣는다 */
+  seed: string;
   goalMinutes: number;
 }
 
 /** 내가 맡을 조각을 색으로 보여 주고 그 아래에 목표 시간을 크게 적는다 */
-export const GoalPreview = ({ pieceCount, memberCount, myRow, goalMinutes }: GoalPreviewProps) => {
+export const GoalPreview = ({
+  pieceCount,
+  memberCount,
+  myRow,
+  seed,
+  goalMinutes,
+}: GoalPreviewProps) => {
   const grid = gridFor(pieceCount, memberCount);
+  // 미리보기는 Figma 처럼 정사각형에 가까운 판에 내 조각을 흩어 보여 준다
+  const board = previewGrid(pieceTotal(grid));
+  const myPieces = previewPieces(seed, pieceTotal(board), grid.cols, myRow);
   return (
     <>
       <div className='flex flex-col items-center gap-[10px]'>
@@ -19,8 +31,8 @@ export const GoalPreview = ({ pieceCount, memberCount, myRow, goalMinutes }: Goa
           <JigsawBoard
             width={220}
             height={220}
-            grid={grid}
-            look={(index) => (ownerRow(index, grid) === myRow ? 'brand' : 'slot')}
+            grid={board}
+            look={(index) => (myPieces.includes(index) ? 'brand' : 'slot')}
             outlineClassName={() => 'stroke-brand-primary stroke-[1.5]'}
           />
         </div>
