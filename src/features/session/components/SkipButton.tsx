@@ -21,7 +21,8 @@ export const SkipButton = () => {
   const [, code, step = 'join'] = pathname.match(/^\/s\/([^/]+)(?:\/(\w+))?$/) ?? [];
   const total = session ? pieceTotal(gridFor(session.pieceCount, session.members.length)) : 0;
   const finished = step === 'result' && session?.phase === 'assembly' && placedCount === total;
-  const known = ['/', '/new/photo', '/new/size'].includes(pathname) || STEPS.includes(step);
+  const known =
+    ['/', '/new/photo', '/new/size', '/new/goal'].includes(pathname) || STEPS.includes(step);
 
   if (!SKIP_ENABLED || !known || (code === undefined && pathname.startsWith('/s/')) || finished) {
     return null;
@@ -34,14 +35,18 @@ export const SkipButton = () => {
       if (!store.draft.photoUrl) store.setPhoto(mockPhoto());
       return navigate('/new/size');
     }
-    if (pathname === '/new/size') return navigate(`/s/${store.createSession()}/invite`);
+    if (pathname === '/new/size') return navigate('/new/goal');
+    // 서버에 방을 만들지 않고 흉내 낸 세션으로 넘어간다
+    if (pathname === '/new/goal') return navigate(`/s/${store.openAsHost(null)}/invite`);
 
     if (step === 'join') {
-      store.joinAsGuest(code, '테스트');
+      if (!store.session) {
+        store.openAsGuest(code, null, { photoUrl: null, pieceCount: null });
+      }
+      useSessionStore.getState().rename('테스트');
       return navigate(`/s/${code}/goal`);
     }
-    if (step === 'invite') return navigate(`/s/${code}/goal`);
-    if (step === 'goal') return navigate(`/s/${code}/camera`);
+    if (step === 'invite' || step === 'goal') return navigate(`/s/${code}/camera`);
     if (step === 'camera') return navigate(`/s/${code}/lobby`);
     if (step === 'lobby') {
       const taken = store.session?.members.map((member) => member.name) ?? [];

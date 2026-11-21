@@ -7,24 +7,28 @@ import { Accent } from '../components/Accent';
 import { RenameSheet } from '../components/RenameSheet';
 import { StepLayout } from '../components/StepLayout';
 import { EARLY_START_MIN } from '../limits';
-import { useMockJoins } from '../mock';
+import { useStartSession } from '../api';
 import { useSessionStore } from '../store';
 import { useCurrentSession } from '../useCurrentSession';
+import { useSessionSync } from '../useSessionSync';
 
 /** 05-2 대기실. 모두 들어오기를 기다렸다가 공부를 시작한다. */
 export const LobbyPage = () => {
   const { code, session } = useCurrentSession();
   const rename = useSessionStore((state) => state.rename);
   const start = useSessionStore((state) => state.start);
+  const startOnServer = useStartSession();
   const [renaming, setRenaming] = useState(false);
-  useMockJoins();
+  useSessionSync();
 
   const me = session?.members.find((member) => member.isMe);
   const joined = session?.members.filter((member) => member.joined).length ?? 0;
   const full = session !== null && joined === session.memberCount;
-  const guestWaiting = session?.phase === 'lobby' && me !== undefined && !me.isHost && full;
+  const guestWaiting =
+    session?.phase === 'lobby' && !session.remote && me !== undefined && !me.isHost && full;
 
-  // TODO(mock): 참가자 쪽에서는 개설자가 시작한 것처럼 잠시 뒤 넘어간다. 서버가 생기면 서버가 알려 준다
+  // TODO(mock): 서버 없이 흉내 낸 세션의 참가자는 개설자가 시작한 것처럼 잠시 뒤 넘어간다.
+  // 서버 세션에서는 useSessionSync 가 단계 변화를 읽어 넘긴다
   useEffect(() => {
     if (!guestWaiting) return;
     const timer = window.setTimeout(start, 1500);
@@ -33,6 +37,12 @@ export const LobbyPage = () => {
 
   if (!session || !me) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase !== 'lobby') return <Navigate to={`/s/${code}/study`} replace />;
+
+  // 서버 세션이면 서버에서 먼저 시작하고, 성공하면 화면을 넘긴다
+  const begin = () => {
+    if (!session.remote) return start();
+    startOnServer.mutate(session.remote, { onSuccess: start });
+  };
 
   return (
     <StepLayout
@@ -55,12 +65,17 @@ export const LobbyPage = () => {
       footer={
         me.isHost ? (
           <>
+            {startOnServer.isError && (
+              <p role='alert' className='text-center text-caption-medium text-status-away'>
+                {startOnServer.error.message}
+              </p>
+            )}
             {!full && joined >= EARLY_START_MIN && (
-              <Button variant='secondary' onClick={start}>
+              <Button variant='secondary' loading={startOnServer.isPending} onClick={begin}>
                 지금 {joined}명으로 시작하기
               </Button>
             )}
-            <Button disabled={!full} onClick={start}>
+            <Button disabled={!full} loading={startOnServer.isPending} onClick={begin}>
               {full ? '공부 시작하기' : `${session.memberCount}명이 모이면 시작할 수 있어요`}
             </Button>
           </>

@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { Toast } from '@/shared/Toast';
-import { findFilter } from '../photoFilters';
 import type { Grid } from '../puzzle';
 import type { Session, Timeline } from '../types';
 import { useElementSize } from '../useElementSize';
@@ -14,11 +13,10 @@ interface DoneViewProps {
   onHome: () => void;
 }
 
-/** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 주고 어떤 필터였는지 알려 준다. */
+/** 09-B 완성. 다 맞춘 사진을 화면 가득 보여 준다. */
 export const DoneView = ({ session, grid, timeline, onHome }: DoneViewProps) => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const size = useElementSize(frameRef);
-  const filter = findFilter(session.filterId);
 
   return (
     <div ref={frameRef} className='relative min-h-0 flex-1 overflow-hidden bg-bg-inverse'>
@@ -28,7 +26,6 @@ export const DoneView = ({ session, grid, timeline, onHome }: DoneViewProps) => 
         height={size.height}
         grid={grid}
         photoUrl={session.photoUrl}
-        filter={filter}
         look={() => 'photo'}
         outlineClassName={() => 'stroke-white/70 stroke-[1.5]'}
       />
@@ -36,7 +33,7 @@ export const DoneView = ({ session, grid, timeline, onHome }: DoneViewProps) => 
         variant='dark'
         className='absolute top-[calc(45px+env(safe-area-inset-top))] left-1/2 -translate-x-1/2'
       >
-        완성! 필터 공개: {filter.name}
+        완성! 사진이 공개됐어요
       </Toast>
       <ResultSummary timeline={timeline} goalMinutes={session.goalMinutes} onHome={onHome} />
     </div>

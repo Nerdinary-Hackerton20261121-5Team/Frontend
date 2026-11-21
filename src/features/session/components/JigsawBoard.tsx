@@ -1,6 +1,5 @@
 import { useId } from 'react';
 import { cn } from '@/lib/cn';
-import type { PhotoFilter } from '../photoFilters';
 import { piecePath, pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
 
@@ -12,7 +11,6 @@ interface JigsawBoardProps {
   height: number;
   grid: Grid;
   photoUrl?: string;
-  filter?: PhotoFilter;
   /** 조각마다 어떻게 보일지 */
   look: (index: number) => PieceLook;
   /** 조각 테두리의 색과 굵기를 정하는 클래스 */
@@ -28,7 +26,6 @@ export const JigsawBoard = ({
   height,
   grid,
   photoUrl,
-  filter,
   look,
   outlineClassName,
   photoBlur = 0,
@@ -75,15 +72,10 @@ export const JigsawBoard = ({
         <filter id={`${id}-photo-blur`}>
           <feGaussianBlur stdDeviation={photoBlur} />
         </filter>
-        {filter && (
-          <filter id={`${id}-tone`}>
-            <feColorMatrix type={filter.type} values={String(filter.value)} />
-          </filter>
-        )}
       </defs>
 
       {photoUrl && (
-        <g filter={filter ? `url(#${id}-tone)` : undefined}>
+        <g>
           <g clipPath={`url(#${id}-dim)`}>
             <image
               href={photoUrl}

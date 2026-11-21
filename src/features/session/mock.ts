@@ -10,7 +10,8 @@ export const useMockJoins = () => {
   useEffect(() => {
     const timer = window.setInterval(() => {
       const { session, addMember } = useSessionStore.getState();
-      if (!session || session.phase !== 'lobby') return;
+      // 서버에 만들어진 세션은 실제로 들어온 사람만 보여 준다
+      if (!session || session.remote || session.phase !== 'lobby') return;
       const taken = session.members.map((member) => member.name);
       const next = MOCK_NAMES.find((name) => !taken.includes(name));
       if (next && session.members.some((member) => !member.joined)) addMember(next);

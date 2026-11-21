@@ -7,19 +7,22 @@ import { InputButton } from '@/shared/InputButton';
 import { Accent } from '../components/Accent';
 import { Field } from '../components/Field';
 import { StepLayout } from '../components/StepLayout';
-import { useMockJoins } from '../mock';
 import { useCurrentSession } from '../useCurrentSession';
+import { useSessionSync } from '../useSessionSync';
 
 /** 03-A 초대. 개설자가 초대 링크를 나누고 누가 들어왔는지 본다. */
 export const InvitePage = () => {
   const navigate = useNavigate();
   const { code, session } = useCurrentSession();
   const [invited, setInvited] = useState(false);
-  useMockJoins();
+  useSessionSync();
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
 
-  const link = `${window.location.origin}${window.location.pathname}#/s/${code}`;
+  // TODO(mock): 서버가 아직 세션의 사진과 조각 수를 주지 않아서 초대 링크에 실어 보낸다
+  const extra = new URLSearchParams({ pieces: String(session.pieceCount) });
+  if (session.photoUrl.startsWith('http')) extra.set('photo', session.photoUrl);
+  const link = `${window.location.origin}${window.location.pathname}#/s/${code}?${extra}`;
   const joined = session.members.filter((member) => member.joined).length;
 
   const copy = async () => {
@@ -45,7 +48,7 @@ export const InvitePage = () => {
     <StepLayout
       header='세션 만들기'
       back
-      step={3}
+      step={4}
       title={
         <>
           <Accent>함께할 친구</Accent>를 초대해요
@@ -57,7 +60,7 @@ export const InvitePage = () => {
           <Button variant='secondary' onClick={share}>
             링크 공유하기
           </Button>
-          <Button disabled={!invited && joined < 2} onClick={() => navigate(`/s/${code}/goal`)}>
+          <Button disabled={!invited && joined < 2} onClick={() => navigate(`/s/${code}/camera`)}>
             다음으로
           </Button>
         </>

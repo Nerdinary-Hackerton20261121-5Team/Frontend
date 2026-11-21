@@ -5,8 +5,8 @@ import { InfoBox } from '@/shared/InfoBox';
 import { Accent } from '../components/Accent';
 import { NoticeLayout } from '../components/NoticeLayout';
 import { StepLayout } from '../components/StepLayout';
-import { useMockJoins } from '../mock';
 import { useCurrentSession } from '../useCurrentSession';
+import { useSessionSync } from '../useSessionSync';
 
 const PRIVACY_NOTICE =
   '나에게만 보이고, 다른 사람에게는 안 보여요\n자리에 있는지 확인하는 용도입니다.';
@@ -18,7 +18,7 @@ export const CameraPage = () => {
   const start = useCameraStore((state) => state.start);
   const starting = useCameraStore((state) => state.starting);
   const error = useCameraStore((state) => state.error);
-  useMockJoins();
+  useSessionSync();
 
   if (!session) return <Navigate to={`/s/${code}`} replace />;
 

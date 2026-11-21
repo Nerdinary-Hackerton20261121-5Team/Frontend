@@ -11,6 +11,7 @@ import { GoalPage } from '@/features/session/pages/GoalPage';
 import { InvitePage } from '@/features/session/pages/InvitePage';
 import { JoinPage } from '@/features/session/pages/JoinPage';
 import { LobbyPage } from '@/features/session/pages/LobbyPage';
+import { NewGoalPage } from '@/features/session/pages/NewGoalPage';
 import { PhotoPage } from '@/features/session/pages/PhotoPage';
 import { ResultPage } from '@/features/session/pages/ResultPage';
 import { SizePage } from '@/features/session/pages/SizePage';
@@ -29,9 +30,10 @@ export const App = () => {
         <div className='mx-auto flex h-dvh w-full max-w-[402px] flex-col overflow-y-auto bg-bg-default'>
           <Routes>
             <Route path='/' element={<EntryPage />} />
-            {/* 세션 만들기. 사진을 올리고 인원과 조각 수를 정한다 */}
+            {/* 세션 만들기. 사진을 올리고 인원, 조각 수, 목표 시간을 정한다 */}
             <Route path='/new/photo' element={<PhotoPage />} />
             <Route path='/new/size' element={<SizePage />} />
+            <Route path='/new/goal' element={<NewGoalPage />} />
             {/* 초대 링크의 주소. 초대받은 사람은 여기로 들어와 이름을 정한다 */}
             <Route path='/s/:code' element={<JoinPage />} />
             <Route path='/s/:code/closed' element={<ClosedPage />} />

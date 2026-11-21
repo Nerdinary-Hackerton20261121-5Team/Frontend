@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/shared/Button';
-import { InfoBox } from '@/shared/InfoBox';
 import { Toast } from '@/shared/Toast';
 import { useUploadPhoto } from '../api';
 import { Accent } from '../components/Accent';
@@ -11,9 +10,6 @@ import { PhotoReady } from '../components/PhotoReady';
 import { PhotoUploading } from '../components/PhotoUploading';
 import { StepLayout } from '../components/StepLayout';
 import { useSessionStore } from '../store';
-
-const FILTER_NOTICE =
-  '사진에 웃긴 필터가 랜덤으로 씌워져요.\n어떤 필터인지는 퍼즐을 다 맞추면 공개돼요!';
 
 /** 02 사진 올리기. 사진을 골라 서버에 올리고, 올라간 사진을 확인한다. */
 export const PhotoPage = () => {
@@ -105,7 +101,6 @@ export const PhotoPage = () => {
         ) : (
           <PhotoPicker onPick={openPicker} />
         )}
-        <InfoBox>{FILTER_NOTICE}</InfoBox>
         {!ready && (
           <p className='text-caption-medium text-text-tertiary'>
             이 사진으로 만든 결과가 함께하는 사람에게 보여요.

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router';
 import { useCameraStore } from '@/features/attention/camera';
 import { useAttention } from '@/features/attention/useAttention';
 import { BottomSheet } from '@/shared/BottomSheet';
+import { useHeartbeat } from '../api';
 import { AwayCard } from '../components/AwayCard';
 import { JigsawBoard } from '../components/JigsawBoard';
 import { PausedOverlay } from '../components/PausedOverlay';
@@ -11,7 +12,6 @@ import { RowMarkers } from '../components/RowMarkers';
 import { SKIP_ENABLED } from '../components/SkipButton';
 import { SheetActions } from '../components/SheetActions';
 import { StudyHud } from '../components/StudyHud';
-import { findFilter } from '../photoFilters';
 import { gridFor, ownerRow } from '../puzzle';
 import { useSessionStore } from '../store';
 import { SPEED } from '../time';
@@ -42,6 +42,14 @@ export const StudyPage = () => {
   const away = attention === 'absent' || attention === 'looking-away';
   useWakeLock(studying);
 
+  // 서버 세션이면 연결을 알리고, 서버의 공부 시간이 끝났으면 함께 퍼즐 맞추기로 넘어간다
+  const heartbeat = useHeartbeat(session?.remote ?? null, studying);
+  const endedOnServer =
+    heartbeat.data?.status === 'ASSEMBLING' || heartbeat.data?.status === 'COMPLETED';
+  useEffect(() => {
+    if (endedOnServer) finishStudy();
+  }, [endedOnServer, finishStudy]);
+
   useEffect(() => {
     if (!studying) return;
     const timer = window.setInterval(() => {
@@ -69,7 +77,6 @@ export const StudyPage = () => {
         height={size.height}
         grid={grid}
         photoUrl={session.photoUrl}
-        filter={findFilter(session.filterId)}
         photoBlur={(1 - me.progress) * MAX_BLUR}
         look={(index) => (ownerRow(index, grid) === myRow ? 'photo' : 'dim')}
         outlineClassName={(index) =>
