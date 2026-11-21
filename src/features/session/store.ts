@@ -180,11 +180,14 @@ export const useSessionStore = create<SessionStore>()(
         set((state) => {
           const { session } = state;
           if (!session?.remote || session.phase !== 'lobby') return state;
-          const me = session.members.find((each) => each.isMe);
-          if (!me) return state;
+          const found = session.members.find((each) => each.isMe);
+          if (!found) return state;
+          // 방장이 나가면 서버가 다음 사람을 방장으로 올린다. 내가 방장이 됐는지 매번 서버 값을 따른다
+          const isCreator = detail.me.isCreator;
+          const me = { ...found, isHost: isCreator };
           const capacity = detail.maxParticipants ?? session.memberCount;
           // 서버는 다른 사람의 이름을 주지 않는다. 내가 들어온 순서를 기준으로 번호를 붙인다
-          const mySeat = session.remote.isCreator
+          const mySeat = isCreator
             ? 0
             : Math.min(session.mySeat || detail.participantCount - 1, detail.participantCount - 1);
           const known = new Map(session.members.map((each) => [each.id, each]));
@@ -198,6 +201,7 @@ export const useSessionStore = create<SessionStore>()(
           });
           const synced: Session = {
             ...session,
+            remote: { ...session.remote, isCreator },
             mySeat,
             memberCount: capacity,
             goalMinutes: Math.max(1, Math.round(detail.goalSeconds / 60)),
