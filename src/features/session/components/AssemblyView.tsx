@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { Toast } from '@/shared/Toast';
-import { MY_BLUR_RATIO } from '../limits';
+import { blurRatio } from '../limits';
 import { loosePadding, pieceTotal } from '../puzzle';
 import type { Grid } from '../puzzle';
-import { toMinutes, toPercent } from '../time';
+import { formatDuration, toPercent } from '../time';
 import type { Session, Timeline } from '../types';
 import { useElementSize } from '../useElementSize';
 import { Accent } from './Accent';
@@ -76,8 +76,8 @@ export const AssemblyView = ({
   const padX = pieceImages ? cellW * padRatio : loosePadding(cellW, cellH);
   const padY = pieceImages ? cellH * padRatio : loosePadding(cellW, cellH);
 
-  const myBlur = (1 - myRestoration) * cellW * MY_BLUR_RATIO;
-  const myFilter = pieceImages && myBlur > 0.5 ? 'url(#assembly-my-blur)' : undefined;
+  const myBlur = cellW * blurRatio(myRestoration);
+  const myFilter = pieceImages && cellW > 0 ? 'url(#assembly-my-blur)' : undefined;
 
   // 아직 끼우지 않은 내 조각은 판의 왼쪽과 오른쪽에 번갈아 놓아 둔다
   const homeOf = (index: number) => {
@@ -145,7 +145,7 @@ export const AssemblyView = ({
         </p>
         <p className='mt-5 inline-flex items-center gap-[6px] rounded-full bg-bg-default py-[5px] pr-3 pl-2 text-caption-medium text-text-body shadow-[0_2px_10px_rgba(0,0,0,0.08)]'>
           <ProgressRing size={16} value={timeline.focused / (session.goalMinutes * 60)} />
-          {session.goalMinutes}분 목표 중 {toMinutes(timeline.focused)}분
+          {session.goalMinutes}분 목표 중 {formatDuration(timeline.focused)}
           <span className='text-brand-strong'>
             {toPercent(timeline.focused / (session.goalMinutes * 60))}%
           </span>

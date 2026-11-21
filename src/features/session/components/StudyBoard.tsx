@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { blurRatio } from '../limits';
 import type { Grid } from '../puzzle';
 import type { Member } from '../types';
 import { CellRing } from './CellRing';
@@ -97,8 +98,10 @@ export const StudyBoard = ({
                     height,
                     left: -sourceOf(cell.index).x,
                     top: -sourceOf(cell.index).y,
+                    // 공부하는 동안 남의 조각은 가장 흐린 단계로 보여 준다
+                    filter: `blur(${cellW * blurRatio(0)}px) brightness(0.75)`,
                   }}
-                  className='absolute max-w-none object-cover blur-[10px] brightness-75'
+                  className='absolute max-w-none object-cover'
                 />
               </div>
             ))

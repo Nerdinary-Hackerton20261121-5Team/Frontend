@@ -1,5 +1,5 @@
 import { Button } from '@/shared/Button';
-import { toMinutes, toPercent } from '../time';
+import { formatDuration, toPercent } from '../time';
 import type { Timeline } from '../types';
 
 interface ResultSummaryProps {
@@ -22,10 +22,10 @@ export const ResultSummary = ({
   const rows = [
     {
       label: '화면에 둔 시간',
-      value: `${toMinutes(timeline.focused)}분 / ${goalMinutes}분 · ${toPercent(timeline.focused / (goalMinutes * 60))}%`,
+      value: `${formatDuration(timeline.focused)} / ${goalMinutes}분 · ${toPercent(timeline.focused / (goalMinutes * 60))}%`,
     },
-    { label: '자리 비움', value: `${toMinutes(timeline.away)}분` },
-    { label: '직접 일시정지', value: `${toMinutes(timeline.paused)}분` },
+    { label: '자리 비움', value: formatDuration(timeline.away) },
+    { label: '직접 일시정지', value: formatDuration(timeline.paused) },
   ];
 
   return (
