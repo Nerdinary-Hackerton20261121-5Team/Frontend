@@ -1,6 +1,6 @@
-import type { ButtonHTMLAttributes } from 'react';
-import { cva } from 'class-variance-authority';
-import { cn } from '@/lib/cn';
+import type { ButtonHTMLAttributes } from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/cn'
 
 // Figma Components > Chip (Default · Variant2=선택됨)
 const chipVariants = cva(
@@ -12,21 +12,21 @@ const chipVariants = cva(
         true: 'bg-brand-primary text-text-on-brand',
       },
     },
-    defaultVariants: { selected: false },
+    defaultVariants: {
+      selected: false,
+    },
   },
-);
+)
 
-interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  selected?: boolean;
-}
+interface ChipProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof chipVariants> {}
 
-export const Chip = ({ selected = false, className, ...rest }: ChipProps) => {
-  return (
-    <button
-      type='button'
-      aria-pressed={selected}
-      className={cn(chipVariants({ selected }), className)}
-      {...rest}
-    />
-  );
-};
+export const Chip = ({ selected, className, type = 'button', ...rest }: ChipProps) => (
+  <button
+    type={type}
+    aria-pressed={Boolean(selected)}
+    className={cn(chipVariants({ selected }), className)}
+    {...rest}
+  />
+)
