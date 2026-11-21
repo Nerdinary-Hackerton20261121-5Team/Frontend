@@ -8,6 +8,7 @@ import { JigsawBoard } from '../components/JigsawBoard';
 import { PausedOverlay } from '../components/PausedOverlay';
 import { PeopleSheet } from '../components/PeopleSheet';
 import { RowMarkers } from '../components/RowMarkers';
+import { SKIP_ENABLED } from '../components/SkipButton';
 import { SheetActions } from '../components/SheetActions';
 import { StudyHud } from '../components/StudyHud';
 import { findFilter } from '../photoFilters';
@@ -50,7 +51,8 @@ export const StudyPage = () => {
   if (!session) return <Navigate to={`/s/${code}`} replace />;
   if (session.phase === 'lobby') return <Navigate to={`/s/${code}/lobby`} replace />;
   if (session.phase === 'assembly') return <Navigate to={`/s/${code}/result`} replace />;
-  if (!stream) return <Navigate to={`/s/${code}/camera`} replace />;
+  // TODO(skip): 건너뛰기로 카메라 없이 들어온 경우를 허용한다. 건너뛰기를 지울 때 조건을 !stream 으로 되돌린다
+  if (!stream && !SKIP_ENABLED) return <Navigate to={`/s/${code}/camera`} replace />;
 
   const grid = gridFor(session.pieceCount, session.members.length);
   const myRow = session.members.findIndex((member) => member.isMe);
