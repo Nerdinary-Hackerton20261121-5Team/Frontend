@@ -33,6 +33,7 @@
   --color-bg-surface: var(--gray-0);
   --color-bg-subtle: var(--gray-150);
   --color-bg-field: var(--gray-100);
+  --color-bg-inverse: var(--gray-900); /* 어두운 토스트 (Figma Toast Dark) */
 
   --color-text-primary: var(--gray-900);
   --color-text-body: var(--gray-600);
