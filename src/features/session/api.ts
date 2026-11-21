@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import type { Remote } from './types';
 
@@ -37,7 +37,12 @@ export type SessionDetail = {
   /** 방의 사진. 아직 정하지 않았으면 null */
   image: UploadedImage | null;
   me: { participantId: number; isCreator: boolean };
+  /** 들어온 사람 명단, 입장 순서. 이름을 아직 정하지 않았으면 nickname 이 null */
+  participants: { participantId: number; nickname: string | null; isCreator: boolean }[];
 };
+
+/** 서버에 알리는 내 상태. 서버는 FOCUSING 인 동안만 공부 시간을 쌓는다 */
+export type Presence = 'FOCUSING' | 'PAUSED' | 'AWAY';
 
 export type Heartbeat = {
   status: SessionStatus;
@@ -59,8 +64,21 @@ export type BoardPiece = {
   restoration: number | null;
 };
 
+/** 함께 하는 사람의 지금 상태. DISCONNECTED 는 연결 확인이 오래 끊긴 경우다 */
+export type BoardMember = {
+  participantId: number;
+  nickname: string | null;
+  isMe: boolean;
+  state: Presence | 'DISCONNECTED';
+  focusedSeconds: number;
+  /** 0 에서 1. 쌓인 공부 시간 ÷ 목표 시간 */
+  restoration: number;
+};
+
 export type Board = {
   status: SessionStatus;
+  /** 명단, 입장 순서 */
+  members: BoardMember[];
   gridRows: number;
   gridCols: number;
   /** 세션에 사진이 있는지. 없으면 조각 그림도 없다 */
@@ -90,6 +108,8 @@ export const useCreateSession = () => {
       goalSeconds: number;
       maxParticipants: number;
       clientRequestId: string;
+      /** 함께 하는 사람에게 보일 내 이름 */
+      nickname: string;
       photo: File | null;
     }) => {
       const { photo, ...body } = input;
@@ -135,6 +155,7 @@ export const useJoinSession = (code: string, enabled: boolean) => {
   return useQuery({
     queryKey: ['session-join', code],
     queryFn: () =>
+      // 이름은 화면에서 받은 뒤 useSetNickname 으로 따로 보낸다
       api.post<SessionEntry>('/api/sessions/join', {
         sessionCode: code,
         clientRequestId: joinRequestId(code),
@@ -170,21 +191,41 @@ export const useStartSession = () => {
   });
 };
 
-/** 공부하는 동안 10초마다 연결을 알린다. 서버는 이것으로 끊긴 사람을 가려낸다 */
-export const useHeartbeat = (remote: Remote | null, enabled: boolean) => {
+/**
+ * 공부하는 동안 10초마다 연결과 내 상태를 알린다. 서버는 FOCUSING 인 동안만 공부 시간을 쌓는다.
+ * 상태가 바뀌면 주기를 기다리지 않고 바로 한 번 보낸다(상태가 쿼리 키에 들어 있다).
+ */
+export const useHeartbeat = (remote: Remote | null, enabled: boolean, state: Presence) => {
   return useQuery({
-    queryKey: ['session-heartbeat', remote?.sessionId],
+    queryKey: ['session-heartbeat', remote?.sessionId, state],
     queryFn: () => {
       if (!remote) throw new Error('세션에 들어가 있지 않아요');
       return api.post<Heartbeat>(
         `/api/sessions/${remote.sessionId}/heartbeat`,
-        undefined,
+        { state },
         withToken(remote),
       );
     },
     enabled: remote !== null && enabled,
     refetchInterval: 10_000,
     refetchIntervalInBackground: true,
+    // 상태가 바뀌어 다시 보내는 동안에도 직전 응답(서버의 단계)을 들고 있는다
+    placeholderData: keepPreviousData,
+  });
+};
+
+/** 함께 하는 사람에게 보일 내 이름을 서버에 알린다 */
+export const useSetNickname = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ remote, nickname }: { remote: Remote; nickname: string }) =>
+      api.patch<{ participantId: number; nickname: string }>(
+        `/api/sessions/${remote.sessionId}/participants/me`,
+        { nickname },
+        withToken(remote),
+      ),
+    onSuccess: (_, { remote }) =>
+      queryClient.invalidateQueries({ queryKey: ['session', remote.sessionId] }),
   });
 };
 
@@ -240,6 +281,8 @@ export const leaveSession = (remote: Remote, keepalive: boolean) =>
 /** 조립판의 조각 하나. 한 사람이 2개를 맡는다 */
 export type AssemblyPiece = {
   pieceId: number;
+  /** 조각 주인의 참가자 번호 */
+  participantId: number;
   isMine: boolean;
   placed: boolean;
   /** 놓인 칸 번호(왼쪽 위부터 1). 아직 안 놓였으면 null. 서버는 정답 칸을 놓기 전에는 알려 주지 않는다 */
