@@ -10,11 +10,14 @@ import { Accent } from './Accent';
 import { Confetti } from './Confetti';
 import { JigsawBoard } from './JigsawBoard';
 import { LoosePiece } from './LoosePiece';
+import { PieceImages } from './PieceImages';
 import { ProgressRing } from './ProgressRing';
 
 /** Figma 의 판 크기. 화면이 작으면 같은 비율로 줄인다 */
 const BOARD_WIDTH = 220;
 const BOARD_HEIGHT = 477;
+/** 서버 조각은 튀어나온 부분까지 그림에 들어 있어서 빈 칸은 네모로 둔다 */
+const FLAT = { top: 0, right: 0, bottom: 0, left: 0 };
 
 interface AssemblyViewProps {
   session: Session;
@@ -25,6 +28,12 @@ interface AssemblyViewProps {
   myPieces: number[];
   /** 마지막으로 조각을 끼운 사람. 누군지 모르면 빈 문자열 */
   lastPlacedBy: string | null;
+  /** 서버가 오려 준 조각 그림(조각 번호별). 있으면 이것으로 그리고, 없으면 사진을 직접 잘라 그린다 */
+  pieceImages?: Record<number, string>;
+  /** 조각 그림이 칸보다 사방으로 얼마나 큰지(칸 크기에 대한 비율) */
+  padRatio?: number;
+  /** 판의 가로세로 비율(가로 ÷ 세로). 서버 조각은 사진 비율을 그대로 따른다 */
+  aspect?: number;
   onPlace: (index: number) => void;
 }
 
@@ -36,6 +45,9 @@ export const AssemblyView = ({
   placed,
   myPieces,
   lastPlacedBy,
+  pieceImages,
+  padRatio = 0.2,
+  aspect = BOARD_WIDTH / BOARD_HEIGHT,
   onPlace,
 }: AssemblyViewProps) => {
   const areaRef = useRef<HTMLDivElement | null>(null);
@@ -54,25 +66,28 @@ export const AssemblyView = ({
           !member.isMe && piecesOfRow(row, grid).some((index) => !placed.includes(index)),
       );
 
-  const boardHeight = Math.min(BOARD_HEIGHT, area.height);
-  const boardWidth = (boardHeight * BOARD_WIDTH) / BOARD_HEIGHT;
+  // 판은 Figma 크기 안에서 비율을 지키며 가장 크게 둔다
+  const boardHeight = Math.min(BOARD_HEIGHT, area.height, BOARD_WIDTH / aspect);
+  const boardWidth = boardHeight * aspect;
   const boardLeft = (area.width - boardWidth) / 2;
   const cellW = boardWidth / grid.cols;
   const cellH = boardHeight / grid.rows;
-  const padding = loosePadding(cellW, cellH);
+  // 조각 둘레의 여백. 서버 그림은 칸의 일정 비율만큼 크고, 직접 그릴 때는 돌기 크기만큼 둔다
+  const padX = pieceImages ? cellW * padRatio : loosePadding(cellW, cellH);
+  const padY = pieceImages ? cellH * padRatio : loosePadding(cellW, cellH);
 
   // 아직 끼우지 않은 내 조각은 판의 왼쪽과 오른쪽에 번갈아 놓아 둔다
   const homeOf = (index: number) => {
     const order = myPieces.indexOf(index);
-    const lowest = Math.max(boardHeight - cellH - padding * 2, 0);
+    const lowest = Math.max(boardHeight - cellH - padY * 2, 0);
     return {
-      x: order % 2 === 0 ? 4 : area.width - cellW - padding * 2 - 4,
+      x: order % 2 === 0 ? 4 : area.width - cellW - padX * 2 - 4,
       y: Math.min(40 + order * (cellH + 24), lowest),
     };
   };
   const slotOf = (index: number) => ({
-    x: boardLeft + (index % grid.cols) * cellW - padding,
-    y: Math.floor(index / grid.cols) * cellH - padding,
+    x: boardLeft + (index % grid.cols) * cellW - padX,
+    y: Math.floor(index / grid.cols) * cellH - padY,
   });
 
   const grab = (event: PointerEvent<HTMLDivElement>, index: number) => {
@@ -88,11 +103,14 @@ export const AssemblyView = ({
       dy: event.clientY - grabbedAt.current.y,
     });
   };
-  const drop = () => {
+  const drop = (event: PointerEvent<HTMLDivElement>) => {
     if (!drag) return;
     const home = homeOf(drag.index);
     const slot = slotOf(drag.index);
-    const distance = Math.hypot(home.x + drag.dx - slot.x, home.y + drag.dy - slot.y);
+    // 손을 뗀 자리로 잰다. 빠르게 끌면 마지막 움직임이 아직 화면에 반영되지 않았을 수 있다
+    const dx = event.clientX - grabbedAt.current.x;
+    const dy = event.clientY - grabbedAt.current.y;
+    const distance = Math.hypot(home.x + dx - slot.x, home.y + dy - slot.y);
     // 제자리 가까이에 놓으면 끼워지고, 아니면 원래 자리로 돌아간다
     if (distance < Math.max(28, cellW * 0.4)) onPlace(drag.index);
     setDrag(null);
@@ -140,11 +158,29 @@ export const AssemblyView = ({
             height={boardHeight}
             grid={grid}
             photoUrl={session.photoUrl}
-            look={(index) => (placed.includes(index) ? 'photo' : 'slot')}
+            edges={pieceImages ? () => FLAT : undefined}
+            look={(index) =>
+              !placed.includes(index) ? 'slot' : pieceImages?.[index] ? 'none' : 'photo'
+            }
             outlineClassName={(index) =>
-              placed.includes(index) ? 'stroke-white/70' : 'stroke-brand-disabled stroke-[1.5]'
+              !placed.includes(index)
+                ? 'stroke-brand-disabled stroke-[1.5]'
+                : pieceImages?.[index]
+                  ? 'stroke-transparent'
+                  : 'stroke-white/70'
             }
           />
+          {/* 끼워진 조각. 남의 조각은 그 사람이 채운 만큼만 선명하다 */}
+          {pieceImages && (
+            <PieceImages
+              grid={grid}
+              cellW={cellW}
+              cellH={cellH}
+              images={pieceImages}
+              indexes={placed}
+              padRatio={padRatio}
+            />
+          )}
         </div>
         {area.width > 0 &&
           remaining.map((index) => {
@@ -168,13 +204,23 @@ export const AssemblyView = ({
                   zIndex: dragging ? 2 : 1,
                 }}
               >
-                <LoosePiece
-                  grid={grid}
-                  index={index}
-                  cellW={cellW}
-                  cellH={cellH}
-                  photoUrl={session.photoUrl}
-                />
+                {pieceImages?.[index] ? (
+                  <img
+                    src={pieceImages[index]}
+                    alt=''
+                    draggable={false}
+                    className='block max-w-none drop-shadow-[0_6px_10px_rgba(0,0,0,0.18)]'
+                    style={{ width: cellW + padX * 2, height: cellH + padY * 2 }}
+                  />
+                ) : (
+                  <LoosePiece
+                    grid={grid}
+                    index={index}
+                    cellW={cellW}
+                    cellH={cellH}
+                    photoUrl={session.photoUrl}
+                  />
+                )}
               </div>
             );
           })}

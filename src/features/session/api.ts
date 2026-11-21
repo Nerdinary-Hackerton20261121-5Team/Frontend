@@ -50,14 +50,25 @@ export type Heartbeat = {
 
 /** 진행판의 한 칸. 한 사람이 한 칸을 맡는다 */
 export type BoardPiece = {
-  /** 왼쪽 위부터 1 */
+  /** 정답 칸 번호. 왼쪽 위부터 1 */
   position: number;
+  /** 공부하는 동안 보여 줄 칸 번호. 정답 칸이 드러나지 않게 서버가 섞어 둔다 */
+  displaySlot: number;
   isMine: boolean;
   /** 0 에서 1. 공부 중에는 내 것만 값이 있고 남의 것은 null 이다 */
   restoration: number | null;
 };
 
-export type Board = { status: SessionStatus; pieces: BoardPiece[] };
+export type Board = {
+  status: SessionStatus;
+  gridRows: number;
+  gridCols: number;
+  /** 세션에 사진이 있는지. 없으면 조각 그림도 없다 */
+  hasImage: boolean;
+  /** 조각 그림이 칸보다 사방으로 얼마나 큰지(칸 크기에 대한 비율). 튀어나온 부분이 들어갈 자리다 */
+  padRatio: number;
+  pieces: BoardPiece[];
+};
 
 const withToken = (remote: Remote) => ({ headers: { 'X-Participant-Token': remote.token } });
 
@@ -268,5 +279,61 @@ export const usePlacePiece = () => {
     },
     onSuccess: (_result, input) =>
       queryClient.invalidateQueries({ queryKey: ['session-assembly', input.remote.sessionId] }),
+  });
+};
+
+const toDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
+/** 그림의 가로세로 비율(가로 ÷ 세로) */
+const aspectOf = (url: string) =>
+  new Promise<number>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image.naturalWidth / image.naturalHeight);
+    image.onerror = () => reject(new Error('조각 그림을 읽지 못했어요'));
+    image.src = url;
+  });
+
+export type PieceImages = {
+  /** 정답 칸 번호별 그림 주소 */
+  urls: Record<number, string>;
+  /** 칸 하나의 가로세로 비율. 서버는 사진을 자르지 않고 원래 비율대로 나눈다 */
+  cellAspect: number;
+};
+
+/**
+ * 서버가 직소 모양으로 오려 준 조각 그림을 받는다.
+ * 내 조각은 선명하고, 남의 조각은 그 사람이 채운 만큼만 선명하다.
+ * 토큰이 필요해 img 주소로 바로 쓸 수 없어서, 받아서 data 주소로 바꿔 돌려준다.
+ */
+export const usePieceImages = (
+  remote: Remote | null,
+  positions: number[],
+  /** 공부 중에는 남의 조각이 점점 선명해지므로 가끔 다시 받는다. 조립 단계에서는 굳어 있다 */
+  stage: 'study' | 'assembly' | null,
+) => {
+  return useQuery({
+    queryKey: ['piece-images', remote?.sessionId, stage, positions.join()],
+    queryFn: async (): Promise<PieceImages> => {
+      if (!remote) throw new Error('세션에 들어가 있지 않아요');
+      const entries = await Promise.all(
+        positions.map(async (position) => {
+          const blob = await api.getBlob(
+            `/api/sessions/${remote.sessionId}/pieces/${position}/image`,
+            withToken(remote),
+          );
+          return [position, await toDataUrl(blob)] as const;
+        }),
+      );
+      return { urls: Object.fromEntries(entries), cellAspect: await aspectOf(entries[0][1]) };
+    },
+    enabled: remote !== null && stage !== null && positions.length > 0,
+    staleTime: Infinity,
+    refetchInterval: stage === 'study' ? 30_000 : false,
   });
 };
