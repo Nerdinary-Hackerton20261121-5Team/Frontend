@@ -17,6 +17,7 @@ import { useSessionStore } from '../store';
 import { SPEED } from '../time';
 import { useCurrentSession } from '../useCurrentSession';
 import { useElementSize } from '../useElementSize';
+import { useWakeLock } from '../useWakeLock';
 
 /** 내 조각이 가장 흐릴 때의 흐림 정도(px). 시간을 채울수록 0 에 가까워진다 */
 const MAX_BLUR = 8;
@@ -39,6 +40,7 @@ export const StudyPage = () => {
   const attention = useAttention(videoRef, studying && stream !== null && !paused);
   // 판정 모델을 아직 못 불렀을 때는 자리에 있는 것으로 본다
   const away = attention === 'absent' || attention === 'looking-away';
+  useWakeLock(studying);
 
   useEffect(() => {
     if (!studying) return;

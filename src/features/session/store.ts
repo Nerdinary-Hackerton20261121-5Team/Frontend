@@ -1,9 +1,11 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { MOCK_INVITE, mockPhoto } from './mockData';
 import { randomFilterId } from './photoFilters';
 import type { Member, Session, TickMode, Timeline } from './types';
 
 // 세션을 만드는 동안 고른 값과, 들어가 있는 세션의 상태를 한곳에서 들고 있는다.
+// 새로고침해도 이어지도록 탭이 열려 있는 동안 sessionStorage 에 남긴다.
 // TODO(mock): 세션 서버 API 가 생기면 createSession, joinAsGuest, addMember, tick 의 다른 사람 부분을 서버 값으로 바꾼다.
 
 type Draft = { photoUrl: string | null; memberCount: number; pieceCount: number };
@@ -56,164 +58,181 @@ interface SessionStore {
   reset: () => void;
 }
 
-export const useSessionStore = create<SessionStore>((set, get) => ({
-  draft: { photoUrl: null, memberCount: 6, pieceCount: 12 },
-  session: null,
-  timeline: EMPTY_TIMELINE,
-  paused: false,
-  placed: [],
-  lastPlacedBy: null,
-
-  setPhoto: (photoUrl) => set((state) => ({ draft: { ...state.draft, photoUrl } })),
-
-  setSize: (memberCount, pieceCount) =>
-    set((state) => ({ draft: { ...state.draft, memberCount, pieceCount } })),
-
-  createSession: () => {
-    const { draft } = get();
-    const code = randomCode();
-    set({
-      session: {
-        code,
-        photoUrl: draft.photoUrl ?? mockPhoto(),
-        filterId: randomFilterId(),
-        memberCount: draft.memberCount,
-        pieceCount: draft.pieceCount,
-        goalMinutes: 50,
-        members: [
-          member('me', '개설자', { isMe: true, isHost: true }),
-          ...emptySeats(1, draft.memberCount),
-        ],
-        phase: 'lobby',
-      },
-      timeline: EMPTY_TIMELINE,
-      paused: false,
-      placed: [],
-      lastPlacedBy: null,
-    });
-    return code;
-  },
-
-  joinAsGuest: (code, name) => {
-    const others = [MOCK_INVITE.hostName, ...MOCK_INVITE.joinedNames];
-    set({
-      session: {
-        code,
-        photoUrl: mockPhoto(),
-        filterId: randomFilterId(),
-        memberCount: MOCK_INVITE.memberCount,
-        pieceCount: 12,
-        goalMinutes: 50,
-        members: [
-          ...others.map((other, index) => member(`mock-${index}`, other, { isHost: index === 0 })),
-          member('me', name, { isMe: true }),
-          ...emptySeats(others.length + 1, MOCK_INVITE.memberCount),
-        ],
-        phase: 'lobby',
-      },
-      timeline: EMPTY_TIMELINE,
-      paused: false,
-      placed: [],
-      lastPlacedBy: null,
-    });
-  },
-
-  rename: (name) =>
-    set((state) =>
-      state.session
-        ? {
-            session: {
-              ...state.session,
-              members: state.session.members.map((each) => (each.isMe ? { ...each, name } : each)),
-            },
-          }
-        : state,
-    ),
-
-  setGoal: (minutes) =>
-    set((state) =>
-      state.session ? { session: { ...state.session, goalMinutes: minutes } } : state,
-    ),
-
-  addMember: (name) =>
-    set((state) => {
-      if (!state.session) return state;
-      const seat = state.session.members.findIndex((each) => !each.joined);
-      if (seat === -1) return state;
-      return {
-        session: {
-          ...state.session,
-          members: state.session.members.map((each, index) =>
-            index === seat ? { ...each, name, joined: true } : each,
-          ),
-        },
-      };
-    }),
-
-  start: () =>
-    set((state) =>
-      state.session
-        ? {
-            session: {
-              ...state.session,
-              members: state.session.members.filter((each) => each.joined),
-              phase: 'study',
-            },
-            timeline: EMPTY_TIMELINE,
-            paused: false,
-          }
-        : state,
-    ),
-
-  tick: (seconds, mode) =>
-    set((state) => {
-      const { session } = state;
-      if (!session || session.phase !== 'study') return state;
-      const goal = session.goalMinutes * 60;
-      const timeline = {
-        ...state.timeline,
-        elapsed: state.timeline.elapsed + seconds,
-        [mode]: state.timeline[mode] + seconds,
-      };
-      const members = session.members.map((each): Member => {
-        if (each.isMe) {
-          return {
-            ...each,
-            progress: Math.min(timeline.focused / goal, 1),
-            status: mode === 'focused' ? 'recording' : mode === 'paused' ? 'paused' : 'away',
-          };
-        }
-        // 다른 사람은 대체로 자리를 지키다가 가끔 비운다
-        const leaves = each.status === 'recording' ? Math.random() < 0.03 : Math.random() > 0.2;
-        const status = leaves ? 'away' : 'recording';
-        const gained = status === 'recording' ? seconds / goal : 0;
-        return { ...each, status, progress: Math.min(each.progress + gained, 1) };
-      });
-      return {
-        timeline,
-        session: { ...session, members, phase: timeline.elapsed >= goal ? 'assembly' : 'study' },
-      };
-    }),
-
-  setPaused: (paused) => set({ paused }),
-
-  finishStudy: () =>
-    set((state) =>
-      state.session ? { session: { ...state.session, phase: 'assembly' }, paused: false } : state,
-    ),
-
-  placePiece: (index, by) =>
-    set((state) =>
-      state.placed.includes(index) ? state : { placed: [...state.placed, index], lastPlacedBy: by },
-    ),
-
-  reset: () =>
-    set({
+export const useSessionStore = create<SessionStore>()(
+  persist(
+    (set, get) => ({
       draft: { photoUrl: null, memberCount: 6, pieceCount: 12 },
       session: null,
       timeline: EMPTY_TIMELINE,
       paused: false,
       placed: [],
       lastPlacedBy: null,
+
+      setPhoto: (photoUrl) => set((state) => ({ draft: { ...state.draft, photoUrl } })),
+
+      setSize: (memberCount, pieceCount) =>
+        set((state) => ({ draft: { ...state.draft, memberCount, pieceCount } })),
+
+      createSession: () => {
+        const { draft } = get();
+        const code = randomCode();
+        set({
+          session: {
+            code,
+            photoUrl: draft.photoUrl ?? mockPhoto(),
+            filterId: randomFilterId(),
+            memberCount: draft.memberCount,
+            pieceCount: draft.pieceCount,
+            goalMinutes: 50,
+            members: [
+              member('me', '개설자', { isMe: true, isHost: true }),
+              ...emptySeats(1, draft.memberCount),
+            ],
+            phase: 'lobby',
+          },
+          timeline: EMPTY_TIMELINE,
+          paused: false,
+          placed: [],
+          lastPlacedBy: null,
+        });
+        return code;
+      },
+
+      joinAsGuest: (code, name) => {
+        const others = [MOCK_INVITE.hostName, ...MOCK_INVITE.joinedNames];
+        set({
+          session: {
+            code,
+            photoUrl: mockPhoto(),
+            filterId: randomFilterId(),
+            memberCount: MOCK_INVITE.memberCount,
+            pieceCount: 12,
+            goalMinutes: 50,
+            members: [
+              ...others.map((other, index) =>
+                member(`mock-${index}`, other, { isHost: index === 0 }),
+              ),
+              member('me', name, { isMe: true }),
+              ...emptySeats(others.length + 1, MOCK_INVITE.memberCount),
+            ],
+            phase: 'lobby',
+          },
+          timeline: EMPTY_TIMELINE,
+          paused: false,
+          placed: [],
+          lastPlacedBy: null,
+        });
+      },
+
+      rename: (name) =>
+        set((state) =>
+          state.session
+            ? {
+                session: {
+                  ...state.session,
+                  members: state.session.members.map((each) =>
+                    each.isMe ? { ...each, name } : each,
+                  ),
+                },
+              }
+            : state,
+        ),
+
+      setGoal: (minutes) =>
+        set((state) =>
+          state.session ? { session: { ...state.session, goalMinutes: minutes } } : state,
+        ),
+
+      addMember: (name) =>
+        set((state) => {
+          if (!state.session) return state;
+          const seat = state.session.members.findIndex((each) => !each.joined);
+          if (seat === -1) return state;
+          return {
+            session: {
+              ...state.session,
+              members: state.session.members.map((each, index) =>
+                index === seat ? { ...each, name, joined: true } : each,
+              ),
+            },
+          };
+        }),
+
+      start: () =>
+        set((state) =>
+          state.session
+            ? {
+                session: {
+                  ...state.session,
+                  members: state.session.members.filter((each) => each.joined),
+                  phase: 'study',
+                },
+                timeline: EMPTY_TIMELINE,
+                paused: false,
+              }
+            : state,
+        ),
+
+      tick: (seconds, mode) =>
+        set((state) => {
+          const { session } = state;
+          if (!session || session.phase !== 'study') return state;
+          const goal = session.goalMinutes * 60;
+          const timeline = {
+            ...state.timeline,
+            elapsed: state.timeline.elapsed + seconds,
+            [mode]: state.timeline[mode] + seconds,
+          };
+          const members = session.members.map((each): Member => {
+            if (each.isMe) {
+              return {
+                ...each,
+                progress: Math.min(timeline.focused / goal, 1),
+                status: mode === 'focused' ? 'recording' : mode === 'paused' ? 'paused' : 'away',
+              };
+            }
+            // 다른 사람은 대체로 자리를 지키다가 가끔 비운다
+            const leaves = each.status === 'recording' ? Math.random() < 0.03 : Math.random() > 0.2;
+            const status = leaves ? 'away' : 'recording';
+            const gained = status === 'recording' ? seconds / goal : 0;
+            return { ...each, status, progress: Math.min(each.progress + gained, 1) };
+          });
+          return {
+            timeline,
+            session: {
+              ...session,
+              members,
+              phase: timeline.elapsed >= goal ? 'assembly' : 'study',
+            },
+          };
+        }),
+
+      setPaused: (paused) => set({ paused }),
+
+      finishStudy: () =>
+        set((state) =>
+          state.session
+            ? { session: { ...state.session, phase: 'assembly' }, paused: false }
+            : state,
+        ),
+
+      placePiece: (index, by) =>
+        set((state) =>
+          state.placed.includes(index)
+            ? state
+            : { placed: [...state.placed, index], lastPlacedBy: by },
+        ),
+
+      reset: () =>
+        set({
+          draft: { photoUrl: null, memberCount: 6, pieceCount: 12 },
+          session: null,
+          timeline: EMPTY_TIMELINE,
+          paused: false,
+          placed: [],
+          lastPlacedBy: null,
+        }),
     }),
-}));
+    { name: 'session', storage: createJSONStorage(() => sessionStorage) },
+  ),
+);
