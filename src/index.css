@@ -9,6 +9,18 @@ body,
   height: 100%;
 }
 
+/* Tailwind 4 는 버튼 커서를 기본값으로 두므로 여기서 정한다. base 레이어라 cursor-* 클래스로 덮을 수 있다. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
 body {
   margin: 0;
   background: #e5e7eb;
